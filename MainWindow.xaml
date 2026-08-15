@@ -43,21 +43,21 @@
         </Grid.RowDefinitions>
 
         <!-- ==================================================== -->
-        <!--  TOP BAR: Link input + Output directory picker         -->
+        <!--  TOP BAR: Link input + Output directory picker       -->
         <!-- ==================================================== -->
         <materialDesign:Card Style="{StaticResource AppCard}" Grid.Row="0" Margin="0,0,0,16">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition />
                     <ColumnDefinition Width="20" />
-                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition />
                 </Grid.ColumnDefinitions>
 
                 <!-- Video URL input -->
                 <Grid Grid.Column="0">
                     <TextBox x:Name="InputLink"
                              Style="{StaticResource AppTextBox}"
-                             materialDesign:HintAssist.Hint="Cole o link do vídeo aqui"
+                             materialDesign:HintAssist.Hint="🔗 Cole o link do vídeo aqui"
                              materialDesign:TextFieldAssist.PrefixText="🔗"
                              Margin="44,0,0,0" />
 
@@ -67,28 +67,28 @@
                             ToolTip="Colar da área de transferência"
                             HorizontalAlignment="Left"
                             VerticalAlignment="Center"
-                            Click="PasteLinkButton_Click" Margin="-7,0,0,0">
+                            Click="PasteLinkButton_Click" Margin="-6,0,0,0">
                         <materialDesign:PackIcon Kind="ContentPaste" Width="18" Height="18" />
                     </Button>
                 </Grid>
 
                 <!-- Output directory picker -->
-                <Grid Grid.Column="2">
+                <Grid Grid.Column="2" Margin="0,0,-8,0">
                     <TextBox x:Name="OutputDir"
                              Style="{StaticResource AppTextBox}"
                              IsReadOnly="True"
                              materialDesign:HintAssist.Hint="Pasta de saída"
                              materialDesign:TextFieldAssist.PrefixText="📁"
-                             Margin="-6,0,50,0" />
+                             Margin="0,0,52,0" />
 
                     <!-- Folder browser, half inside / half outside the field -->
                     <Button x:Name="BrowseOutputButton"
-                            Style="{StaticResource MaterialDesignFloatingActionMiniButton}"
-                            ToolTip="Selecionar pasta"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Center"
-                            Margin="514,0,0,0"
-                            Click="BrowseOutputButton_Click">
+                        Style="{StaticResource MaterialDesignFloatingActionMiniButton}"
+                        ToolTip="Selecionar pasta"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Margin="0,0,4,0"
+                        Click="BrowseOutputButton_Click">
                         <materialDesign:PackIcon Kind="FolderOpen" Width="18" Height="18" />
                     </Button>
                 </Grid>
@@ -202,9 +202,8 @@
                             Grid.Row="2"
                             Content="DOWNLOAD"
                             Style="{StaticResource PrimaryButton}"
-                            HorizontalAlignment="Stretch"
-                            Margin="0,16,0,2"
-                            Click="DownloadButton_Click" />
+                            Margin="0,18,0,0"
+                            Click="DownloadButton_Click" Height="40" />
                 </Grid>
             </materialDesign:Card>
 
