@@ -1,0 +1,325 @@
+﻿<Window x:Class="AzVideoDownloader.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:local="clr-namespace:AzVideoDownloader"
+        mc:Ignorable="d"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        Title="Az Video Downloader"
+        Height="760" Width="1200"
+        MinHeight="620" MinWidth="980"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource MaterialDesignPaper}"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}">
+
+    <!-- ============================================================
+         FFMPEG COMMAND-BUILDING GUIDE (for code-behind reference)
+         ============================================================
+         Each checkbox below is meant to toggle a flag that gets
+         appended when assembling the ffmpeg argument list:
+
+         AudioOnlyCheckBox        -> "-vn" (drop video stream, extract audio only)
+         MergeAudioVideoCheckBox  -> "-c copy" (mux selected video+audio streams
+                                      without re-encoding, when codecs are compatible)
+         ChangeExtensionCheckBox  -> forces output container via ChangeExtensionComboBox
+                                      (may require re-encoding: "-c:v libx264 -c:a aac"
+                                      if the target container doesn't support the
+                                      source codecs)
+         EmbedThumbnailCheckBox   -> "-map 0 -map 1 -c copy -disposition:v:1 attached_pic"
+         EmbedMetadataCheckBox    -> "-map_metadata 0"
+         EmbedSubtitlesCheckBox   -> "-c:s mov_text" (mp4) or "-c:s srt" (mkv/webm)
+
+         Suggested method: BuildFfmpegArguments() in MainWindow.xaml.cs,
+         reading each CheckBox.IsChecked and appending the matching
+         flag to a List<string> before joining into the final command.
+    ============================================================= -->
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ==================================================== -->
+        <!--  TOP BAR: Link input + Output directory picker         -->
+        <!-- ==================================================== -->
+        <materialDesign:Card Style="{StaticResource AppCard}" Grid.Row="0" Margin="0,0,0,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="20" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Video URL input -->
+                <Grid Grid.Column="0">
+                    <TextBox x:Name="InputLink"
+                             Style="{StaticResource AppTextBox}"
+                             materialDesign:HintAssist.Hint="Cole o link do vídeo aqui"
+                             materialDesign:TextFieldAssist.PrefixText="🔗"
+                             Margin="44,0,0,0" />
+
+                    <!-- Paste-from-clipboard shortcut, half inside / half outside the field -->
+                    <Button x:Name="PasteLinkButton"
+                            Style="{StaticResource MaterialDesignFloatingActionMiniButton}"
+                            ToolTip="Colar da área de transferência"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Click="PasteLinkButton_Click" Margin="-7,0,0,0">
+                        <materialDesign:PackIcon Kind="ContentPaste" Width="18" Height="18" />
+                    </Button>
+                </Grid>
+
+                <!-- Output directory picker -->
+                <Grid Grid.Column="2">
+                    <TextBox x:Name="OutputDir"
+                             Style="{StaticResource AppTextBox}"
+                             IsReadOnly="True"
+                             materialDesign:HintAssist.Hint="Pasta de saída"
+                             materialDesign:TextFieldAssist.PrefixText="📁"
+                             Margin="-6,0,50,0" />
+
+                    <!-- Folder browser, half inside / half outside the field -->
+                    <Button x:Name="BrowseOutputButton"
+                            Style="{StaticResource MaterialDesignFloatingActionMiniButton}"
+                            ToolTip="Selecionar pasta"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Margin="514,0,0,0"
+                            Click="BrowseOutputButton_Click">
+                        <materialDesign:PackIcon Kind="FolderOpen" Width="18" Height="18" />
+                    </Button>
+                </Grid>
+            </Grid>
+        </materialDesign:Card>
+
+        <!-- ==================================================== -->
+        <!--  BODY: 3-column layout (formats / options / preview)  -->
+        <!-- ==================================================== -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.1*" />
+                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="0.9*" />
+                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="1.2*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- ============== COLUMN 1: FORMAT SELECTION ============== -->
+            <materialDesign:Card Style="{StaticResource AppCard}" Grid.Column="0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="FORMATO DE VÍDEO"
+                               Style="{StaticResource AppHeading2}" Margin="0,0,0,8" />
+
+                    <!-- Populate items in code-behind after probing formats (yt-dlp/ffprobe) -->
+                    <ListBox x:Name="VideoFormatListBox"
+                             Grid.Row="1"
+                             Margin="0,0,0,16"
+                             materialDesign:ListBoxItemAssist.ShowSelection="True"
+                             SelectionMode="Single" />
+
+                    <TextBlock Grid.Row="2" Text="FORMATO DE ÁUDIO"
+                               Style="{StaticResource AppHeading2}" Margin="0,0,0,8" />
+
+                    <ListBox x:Name="AudioFormatListBox"
+                             Grid.Row="3"
+                             materialDesign:ListBoxItemAssist.ShowSelection="True"
+                             SelectionMode="Single" />
+                </Grid>
+            </materialDesign:Card>
+
+            <!-- ============== COLUMN 2: FFMPEG OPTIONS ============== -->
+            <materialDesign:Card Style="{StaticResource AppCard}" Grid.Column="2">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="OPÇÕES (FFMPEG)"
+                               Style="{StaticResource AppHeading2}" Margin="0,0,0,12" />
+
+                    <!-- ScrollViewer prevents overflow from being clipped by the Card's
+                         rounded-corner ClipToBounds; the Download button (Grid.Row="2")
+                         stays pinned below regardless of how many options are added later. -->
+                    <ScrollViewer Grid.Row="1"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel>
+                            <!-- Each toggle below maps to one ffmpeg flag; see guide at the top -->
+                            <CheckBox x:Name="AudioOnlyCheckBox"
+                                  Content="Somente áudio (extrair)"
+                                  Margin="0,0,0,10" FontFamily="Roboto SemiBold" />
+
+                            <CheckBox x:Name="MergeAudioVideoCheckBox"
+                                  Content="Mesclar vídeo + áudio"
+                                  IsChecked="True"
+                                  Margin="0,0,0,10" FontFamily="Roboto SemiBold" />
+
+                            <CheckBox x:Name="EmbedThumbnailCheckBox"
+                                  Content="Incorporar thumbnail"
+                                  Margin="0,0,0,10" FontFamily="Roboto SemiBold" />
+
+                            <CheckBox x:Name="EmbedMetadataCheckBox"
+                                  Content="Incorporar metadados"
+                                  IsChecked="True"
+                                  Margin="0,0,0,10" FontFamily="Roboto SemiBold" />
+
+                            <CheckBox x:Name="EmbedSubtitlesCheckBox"
+                                  Content="Incorporar legendas (se houver)"
+                                  Margin="0,0,0,10" FontFamily="Roboto SemiBold" />
+
+                            <Separator Margin="0,4,0,14" />
+
+                            <CheckBox x:Name="ChangeExtensionCheckBox"
+                                  Content="Alterar extensão de saída"
+                                  Margin="0,0,0,8" FontFamily="Roboto SemiBold" />
+
+                            <ComboBox x:Name="ChangeExtensionComboBox"
+                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                  IsEnabled="{Binding IsChecked, ElementName=ChangeExtensionCheckBox}"
+                                  materialDesign:HintAssist.Hint="Container de saída"
+                                  Margin="0,0,0,10" FontFamily="Roboto SemiBold">
+                                <ComboBoxItem Content="mp4" IsSelected="True" />
+                                <ComboBoxItem Content="mkv" />
+                                <ComboBoxItem Content="mov" />
+                                <ComboBoxItem Content="webm" />
+                            </ComboBox>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <Button x:Name="DownloadButton"
+                            Grid.Row="2"
+                            Content="DOWNLOAD"
+                            Style="{StaticResource PrimaryButton}"
+                            HorizontalAlignment="Stretch"
+                            Margin="0,16,0,2"
+                            Click="DownloadButton_Click" />
+                </Grid>
+            </materialDesign:Card>
+
+            <!-- ============== COLUMN 3: PREVIEW + VIDEO INFO ============== -->
+            <materialDesign:Card Style="{StaticResource AppCard}" Grid.Column="4">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="2*" />
+                        <RowDefinition Height="16" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Thumbnail preview; set ThumbPreview.Source once fetched -->
+                    <Border Grid.Row="0"
+                            CornerRadius="8"
+                            Background="{DynamicResource MaterialDesignDivider}"
+                            ClipToBounds="True">
+                        <Grid>
+                            <Image x:Name="ThumbPreview"
+                                   Stretch="Uniform" />
+                            <TextBlock x:Name="ThumbPlaceholderText"
+                                       Text="Pré-visualização"
+                                       Style="{StaticResource AppCaptionText}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Video metadata (populate via ffprobe in code-behind) -->
+                    <StackPanel Grid.Row="2">
+                        <TextBlock Text="INFORMAÇÕES DO VÍDEO"
+                                   Style="{StaticResource AppHeading2}" Margin="0,0,0,10" />
+
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Título:" Style="{StaticResource AppCaptionText}" Width="90" />
+                            <TextBlock x:Name="VideoTitleText" Grid.Column="1" Text="—" Style="{StaticResource AppBodyText}" TextTrimming="CharacterEllipsis" />
+                        </Grid>
+
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Duração:" Style="{StaticResource AppCaptionText}" Width="90" />
+                            <TextBlock x:Name="VideoDurationText" Grid.Column="1" Text="—" Style="{StaticResource AppBodyText}" />
+                        </Grid>
+
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="FPS:" Style="{StaticResource AppCaptionText}" Width="90" />
+                            <TextBlock x:Name="VideoFpsText" Grid.Column="1" Text="—" Style="{StaticResource AppBodyText}" />
+                        </Grid>
+
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Bitrate:" Style="{StaticResource AppCaptionText}" Width="90" />
+                            <TextBlock x:Name="VideoBitrateText" Grid.Column="1" Text="—" Style="{StaticResource AppBodyText}" />
+                        </Grid>
+
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Resolução:" Style="{StaticResource AppCaptionText}" Width="90" />
+                            <TextBlock x:Name="VideoResolutionText" Grid.Column="1" Text="—" Style="{StaticResource AppBodyText}" />
+                        </Grid>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Tamanho:" Style="{StaticResource AppCaptionText}" Width="90" />
+                            <TextBlock x:Name="VideoSizeText" Grid.Column="1" Text="—" Style="{StaticResource AppBodyText}" />
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+            </materialDesign:Card>
+        </Grid>
+
+        <!-- ==================================================== -->
+        <!--  BOTTOM BAR: Progress + status                        -->
+        <!-- ==================================================== -->
+        <materialDesign:Card Style="{StaticResource AppCard}" Grid.Row="2" Margin="0,16,0,0" Padding="16,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="60" />
+                </Grid.ColumnDefinitions>
+
+                <ProgressBar x:Name="DownloadProgressBar"
+                             Grid.Column="0"
+                             Height="8"
+                             Minimum="0" Maximum="100" Value="0"
+                             Style="{StaticResource MaterialDesignLinearProgressBar}"
+                             VerticalAlignment="Center" />
+
+                <TextBlock x:Name="ProgressPercentText"
+                           Grid.Column="1"
+                           Text="0%"
+                           Style="{StaticResource AppCaptionText}"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Center" />
+            </Grid>
+        </materialDesign:Card>
+    </Grid>
+</Window>
