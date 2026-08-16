@@ -13,7 +13,8 @@
         MinWidth="980"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource MaterialDesignPaper}"
-        TextElement.Foreground="{DynamicResource MaterialDesignBody}">
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        Icon="icon.ico">
 
     <!-- ============================================================
          FFMPEG COMMAND-BUILDING GUIDE (for code-behind reference)
