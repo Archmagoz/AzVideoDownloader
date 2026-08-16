@@ -1,45 +1,68 @@
 ﻿using System.IO;
+using System.Reflection;
 
 namespace AzVideoDownloader.Services
 {
     /// <summary>
-    /// Resolves and validates the paths to the bundled yt-dlp/ffmpeg/ffprobe
-    /// binaries shipped alongside the application in the "Tools" folder.
+    /// Extracts and resolves the bundled yt-dlp/ffmpeg/ffprobe binaries.
     /// </summary>
     public static class YtDlpToolManager
     {
-        private const string ToolsFolderName = "Tools";
+        private const string ToolDirectoryName = "AzVideoDownloader";
 
-        public static string ToolsDirectory { get; } =
-            Path.Combine(AppContext.BaseDirectory, ToolsFolderName);
+        private static readonly string ToolsDirectory =
+            Path.Combine(
+                Path.GetTempPath(),
+                ToolDirectoryName,
+                Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "default"
+            );
 
-        public static string YtDlpPath { get; } =
+        public static string YtDlpPath =>
             Path.Combine(ToolsDirectory, "yt-dlp.exe");
 
-        public static string FfmpegPath { get; } =
+        public static string FfmpegPath =>
             Path.Combine(ToolsDirectory, "ffmpeg.exe");
 
-        public static string FfprobePath { get; } =
+        public static string FfprobePath =>
             Path.Combine(ToolsDirectory, "ffprobe.exe");
 
-        /// <summary>
-        /// Checks that all required binaries are present. Call this once at
-        /// startup so missing tools fail fast with a clear message instead
-        /// of surfacing as a cryptic yt-dlp process-launch error later.
-        /// </summary>
         public static void EnsureToolsExist()
         {
-            var missing = new[] { YtDlpPath, FfmpegPath, FfprobePath }
-                .Where(path => !File.Exists(path))
-                .ToList();
+            Directory.CreateDirectory(ToolsDirectory);
 
-            if (missing.Count > 0)
+            ExtractIfNeeded(
+                "AzVideoDownloader.Tools.yt-dlp.exe",
+                YtDlpPath);
+
+            ExtractIfNeeded(
+                "AzVideoDownloader.Tools.ffmpeg.exe",
+                FfmpegPath);
+
+            ExtractIfNeeded(
+                "AzVideoDownloader.Tools.ffprobe.exe",
+                FfprobePath);
+        }
+
+        private static void ExtractIfNeeded(
+            string resourceName,
+            string destination)
+        {
+            if (File.Exists(destination))
+                return;
+
+            var assembly = Assembly.GetExecutingAssembly();
+
+            using var stream = assembly.GetManifestResourceStream(resourceName);
+
+            if (stream == null)
             {
                 throw new FileNotFoundException(
-                    "Ferramentas necessárias não encontradas: " +
-                    string.Join(", ", missing.Select(Path.GetFileName)) +
-                    $". Verifique se estão em '{ToolsDirectory}'.");
+                    $"Recurso embutido não encontrado: {resourceName}");
             }
+
+            using var file = File.Create(destination);
+
+            stream.CopyTo(file);
         }
     }
 }
