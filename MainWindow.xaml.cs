@@ -1,10 +1,8 @@
 ﻿using Microsoft.Win32; // OpenFolderDialog (available on .NET 8+ / WPF)
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Windows;
-using System.Windows.Input;
+using System.Windows.Controls;
+using System.Windows.Threading;
 
 using YoutubeDLSharp;
 
@@ -14,10 +12,24 @@ namespace AzVideoDownloader
 {
     public partial class MainWindow : Window
     {
-        private readonly YoutubeDL _ytdl;
+        // ------------------------------------------------------------
+        //  FIELDS
+        // ------------------------------------------------------------
+        private readonly YoutubeDL _ytdl = null!;
 
-        // Guards against overlapping fetches (e.g. user hits Enter twice fast)
-        private bool _isFetchingVideoInfo;
+        // Debounces fetches while the user is still typing/editing the link.
+        private readonly DispatcherTimer _debounceTimer = new();
+        private static readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(700);
+
+        // Cancels a stale in-flight fetch when a newer one supersedes it
+        // (new paste, new keystroke after debounce, link cleared, etc).
+        private CancellationTokenSource? _fetchCts;
+
+        // Duration (seconds) of the currently loaded video, used to derive
+        // an approximate bitrate per selected format.
+        private double? _currentVideoDurationSeconds;
+
+        private static readonly System.Net.Http.HttpClient _httpClient = new();
 
         public MainWindow()
         {
@@ -42,28 +54,68 @@ namespace AzVideoDownloader
                 OutputFolder = OutputDir.Text
             };
 
-            InputLink.KeyDown += InputLink_KeyDown;
+            _debounceTimer = new DispatcherTimer { Interval = DebounceDelay };
+            _debounceTimer.Tick += DebounceTimer_Tick;
+
+            VideoFormatListBox.SelectionChanged += VideoFormatListBox_SelectionChanged;
+            InputLink.TextChanged += InputLink_TextChanged;
+
+            // Fires for BOTH Ctrl+V and the right-click "Paste" context menu
+            // item, since both route through the same WPF paste command.
+            // We use it to skip the debounce delay specifically on paste.
+            DataObject.AddPastingHandler(InputLink, InputLink_Pasting);
         }
 
         // ------------------------------------------------------------
         //  TOP BAR ACTIONS
         // ------------------------------------------------------------
 
-        private async void PasteLinkButton_Click(object sender, RoutedEventArgs e)
+        private void PasteLinkButton_Click(object sender, RoutedEventArgs e)
         {
             if (Clipboard.ContainsText())
             {
+                // Setting .Text raises TextChanged synchronously, which arms
+                // the debounce timer; TriggerImmediateFetch below cancels
+                // that and fetches right away instead of waiting.
                 InputLink.Text = Clipboard.GetText().Trim();
-                await FetchVideoInfoAsync(InputLink.Text);
+                TriggerImmediateFetch();
             }
         }
 
-        private async void InputLink_KeyDown(object sender, KeyEventArgs e)
+        private void InputLink_Pasting(object sender, DataObjectPastingEventArgs e)
         {
-            if (e.Key == Key.Enter)
+            // This event fires BEFORE the pasted text is actually inserted
+            // into the TextBox, so we defer to a lower dispatcher priority
+            // to run right after WPF finishes updating InputLink.Text.
+            Dispatcher.BeginInvoke(new Action(TriggerImmediateFetch), DispatcherPriority.Background);
+        }
+
+        private void InputLink_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            _debounceTimer.Stop();
+
+            if (string.IsNullOrWhiteSpace(InputLink.Text))
             {
-                await FetchVideoInfoAsync(InputLink.Text);
+                // Nothing to fetch: cancel any pending work and go back to
+                // the empty/placeholder state immediately, no need to wait.
+                _fetchCts?.Cancel();
+                ResetToDefaultState();
+                return;
             }
+
+            _debounceTimer.Start();
+        }
+
+        private void DebounceTimer_Tick(object? sender, EventArgs e)
+        {
+            _debounceTimer.Stop();
+            _ = FetchVideoInfoAsync(InputLink.Text.Trim());
+        }
+
+        private void TriggerImmediateFetch()
+        {
+            _debounceTimer.Stop();
+            _ = FetchVideoInfoAsync(InputLink.Text.Trim());
         }
 
         // ------------------------------------------------------------
@@ -72,37 +124,46 @@ namespace AzVideoDownloader
         //  format lists plus the info panel on the right.
         // ------------------------------------------------------------
 
-        private async System.Threading.Tasks.Task FetchVideoInfoAsync(string url)
+        private async Task FetchVideoInfoAsync(string url)
         {
-            if (string.IsNullOrWhiteSpace(url) || _isFetchingVideoInfo)
-                return;
+            // Supersede any fetch still in flight - only the most recent
+            // link the user landed on should end up populating the UI.
+            _fetchCts?.Cancel();
+            _fetchCts?.Dispose();
+            var cts = new CancellationTokenSource();
+            _fetchCts = cts;
 
-            _isFetchingVideoInfo = true;
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                ResetToDefaultState();
+                return;
+            }
+
             SetFetchingState(true);
 
             try
             {
-                var result = await _ytdl.RunVideoDataFetch(url);
+                var result = await _ytdl.RunVideoDataFetch(url, ct: cts.Token);
+
+                // A newer fetch started while we were awaiting; discard
+                // this result, the newer one owns the UI now.
+                if (cts.Token.IsCancellationRequested)
+                    return;
 
                 if (!result.Success)
                 {
-                    MessageBox.Show(
-                        "Não foi possível carregar informações do vídeo:\n" +
-                        string.Join("\n", result.ErrorOutput),
-                        "Az Video Downloader", MessageBoxButton.OK, MessageBoxImage.Error);
+                    ResetToDefaultState();
                     return;
                 }
 
                 var info = result.Data;
 
+                _currentVideoDurationSeconds = info.Duration;
+
                 VideoTitleText.Text = info.Title ?? "—";
                 VideoDurationText.Text = info.Duration.HasValue
                     ? TimeSpan.FromSeconds(info.Duration.Value).ToString(@"hh\:mm\:ss")
                     : "—";
-                VideoFpsText.Text = "—";      // set below, once a video format is selected
-                VideoBitrateText.Text = "—";
-                VideoResolutionText.Text = "—";
-                VideoSizeText.Text = "—";
 
                 var videoFormats = info.Formats
                     .Where(f => f.VideoCodec != "none" && f.VideoCodec != null)
@@ -124,24 +185,151 @@ namespace AzVideoDownloader
 
                 if (videoFormats.Count > 0) VideoFormatListBox.SelectedIndex = 0;
                 if (audioFormats.Count > 0) AudioFormatListBox.SelectedIndex = 0;
+
+                await LoadThumbnailAsync(info.Thumbnail);
             }
-            catch (Exception ex)
+            catch (OperationCanceledException)
             {
-                MessageBox.Show($"Erro inesperado ao carregar o vídeo:\n{ex.Message}",
-                    "Az Video Downloader", MessageBoxButton.OK, MessageBoxImage.Error);
+                // Superseded by a newer fetch - nothing to show for this one.
+            }
+            catch (Exception)
+            {
+                if (!cts.Token.IsCancellationRequested)
+                {
+                    // Link didn't resolve to anything yt-dlp understands
+                    // (typo, unsupported site, unfinished paste, etc) -
+                    // fall back to the default/placeholder state rather
+                    // than leaving stale info on screen.
+                    ResetToDefaultState();
+                }
             }
             finally
             {
-                _isFetchingVideoInfo = false;
-                SetFetchingState(false);
+                if (!cts.Token.IsCancellationRequested)
+                {
+                    SetFetchingState(false);
+                }
             }
         }
 
         private void SetFetchingState(bool isFetching)
         {
-            InputLink.IsEnabled = !isFetching;
             DownloadButton.IsEnabled = !isFetching;
             ThumbPlaceholderText.Text = isFetching ? "Carregando..." : "Pré-visualização";
+
+            VideoFormatsLoadingIndicator.Visibility = isFetching ? Visibility.Visible : Visibility.Collapsed;
+            AudioFormatsLoadingIndicator.Visibility = isFetching ? Visibility.Visible : Visibility.Collapsed;
+
+            if (isFetching)
+            {
+                // Clear stale results immediately so the user doesn't see
+                // the previous video's formats while the new one loads.
+                VideoFormatListBox.ItemsSource = null;
+                AudioFormatListBox.ItemsSource = null;
+            }
+        }
+
+        /// <summary>
+        /// Clears the whole info panel back to its empty/placeholder state.
+        /// Used when the link is cleared, or when a fetch fails to resolve
+        /// (invalid URL, unsupported site, network error, etc).
+        /// </summary>
+        private void ResetToDefaultState()
+        {
+            _currentVideoDurationSeconds = null;
+
+            VideoTitleText.Text = "—";
+            VideoDurationText.Text = "—";
+            VideoFpsText.Text = "—";
+            VideoBitrateText.Text = "—";
+            VideoResolutionText.Text = "—";
+            VideoSizeText.Text = "—";
+
+            VideoFormatListBox.ItemsSource = null;
+            AudioFormatListBox.ItemsSource = null;
+
+            ThumbPreview.Source = null;
+            ThumbPlaceholderText.Text = "Pré-visualização";
+            ThumbPlaceholderText.Visibility = Visibility.Visible;
+
+            VideoFormatsLoadingIndicator.Visibility = Visibility.Collapsed;
+            AudioFormatsLoadingIndicator.Visibility = Visibility.Collapsed;
+
+            DownloadButton.IsEnabled = true;
+        }
+
+        // ------------------------------------------------------------
+        //  VIDEO FORMAT SELECTION
+        //  Updates the info panel (fps/resolution/bitrate/size) whenever
+        //  the user picks a different video format from the list.
+        // ------------------------------------------------------------
+
+        private void VideoFormatListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (VideoFormatListBox.SelectedItem is not FormatListItem item)
+            {
+                VideoFpsText.Text = "—";
+                VideoResolutionText.Text = "—";
+                VideoBitrateText.Text = "—";
+                VideoSizeText.Text = "—";
+                return;
+            }
+
+            var f = item.Source;
+
+            VideoFpsText.Text = f.FrameRate.HasValue ? $"{f.FrameRate:0}" : "—";
+            VideoResolutionText.Text = (f.Width.HasValue && f.Height.HasValue)
+                ? $"{f.Width}x{f.Height}"
+                : "—";
+
+            var sizeBytes = f.FileSize ?? f.ApproximateFileSize;
+            VideoSizeText.Text = sizeBytes.HasValue
+                ? $"{sizeBytes.Value / 1024.0 / 1024.0:0.#} MB"
+                : "—";
+
+            // Approximate bitrate: derived from filesize/duration rather
+            // than a direct property, since we couldn't confirm a stable
+            // bitrate property name on FormatData across versions.
+            VideoBitrateText.Text = (sizeBytes.HasValue && _currentVideoDurationSeconds is > 0)
+                ? $"{sizeBytes.Value * 8 / _currentVideoDurationSeconds.Value / 1000:0} kbps (aprox.)"
+                : "—";
+        }
+
+        // ------------------------------------------------------------
+        //  THUMBNAIL LOADING
+        // ------------------------------------------------------------
+
+        private async Task LoadThumbnailAsync(string? thumbnailUrl)
+        {
+            if (string.IsNullOrWhiteSpace(thumbnailUrl))
+            {
+                ThumbPreview.Source = null;
+                ThumbPlaceholderText.Visibility = Visibility.Visible;
+                return;
+            }
+
+            try
+            {
+                var bytes = await _httpClient.GetByteArrayAsync(thumbnailUrl);
+
+                using var stream = new MemoryStream(bytes);
+                var bitmap = new System.Windows.Media.Imaging.BitmapImage();
+                bitmap.BeginInit();
+                bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                bitmap.StreamSource = stream;
+                bitmap.EndInit();
+                bitmap.Freeze();
+
+                ThumbPreview.Source = bitmap;
+                ThumbPlaceholderText.Visibility = Visibility.Collapsed;
+            }
+            catch
+            {
+                // Thumbnail is a nice-to-have; failing to load it shouldn't
+                // interrupt the rest of the info panel.
+                ThumbPreview.Source = null;
+                ThumbPlaceholderText.Visibility = Visibility.Visible;
+            }
         }
 
         private void BrowseOutputButton_Click(object sender, RoutedEventArgs e)
