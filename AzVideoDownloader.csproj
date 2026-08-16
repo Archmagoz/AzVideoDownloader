@@ -9,40 +9,34 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Remove="C:\Users\0jose\.nuget\packages\materialdesignthemes\5.3.2\contentFiles\any\net10.0-windows7.0\Resources\Roboto\Roboto-Black.ttf" />
-    <EmbeddedResource Remove="C:\Users\0jose\.nuget\packages\materialdesignthemes\5.3.2\contentFiles\any\net10.0-windows7.0\Resources\Roboto\Roboto-BlackItalic.ttf" />
-    <EmbeddedResource Remove="C:\Users\0jose\.nuget\packages\materialdesignthemes\5.3.2\contentFiles\any\net10.0-windows7.0\Resources\Roboto\Roboto-Bold.ttf" />
-    <EmbeddedResource Remove="C:\Users\0jose\.nuget\packages\materialdesignthemes\5.3.2\contentFiles\any\net10.0-windows7.0\Resources\Roboto\Roboto-BoldItalic.ttf" />
-    <EmbeddedResource Remove="C:\Users\0jose\.nuget\packages\materialdesignthemes\5.3.2\contentFiles\any\net10.0-windows7.0\Resources\Roboto\Roboto-Italic.ttf" />
-    <EmbeddedResource Remove="C:\Users\0jose\.nuget\packages\materialdesignthemes\5.3.2\contentFiles\any\net10.0-windows7.0\Resources\Roboto\Roboto-Light.ttf" />
-    <EmbeddedResource Remove="C:\Users\0jose\.nuget\packages\materialdesignthemes\5.3.2\contentFiles\any\net10.0-windows7.0\Resources\Roboto\Roboto-LightItalic.ttf" />
-    <EmbeddedResource Remove="C:\Users\0jose\.nuget\packages\materialdesignthemes\5.3.2\contentFiles\any\net10.0-windows7.0\Resources\Roboto\Roboto-Medium.ttf" />
-    <EmbeddedResource Remove="C:\Users\0jose\.nuget\packages\materialdesignthemes\5.3.2\contentFiles\any\net10.0-windows7.0\Resources\Roboto\Roboto-MediumItalic.ttf" />
-    <EmbeddedResource Remove="C:\Users\0jose\.nuget\packages\materialdesignthemes\5.3.2\contentFiles\any\net10.0-windows7.0\Resources\Roboto\Roboto-Regular.ttf" />
-    <EmbeddedResource Remove="C:\Users\0jose\.nuget\packages\materialdesignthemes\5.3.2\contentFiles\any\net10.0-windows7.0\Resources\Roboto\Roboto-Thin.ttf" />
-    <EmbeddedResource Remove="C:\Users\0jose\.nuget\packages\materialdesignthemes\5.3.2\contentFiles\any\net10.0-windows7.0\Resources\Roboto\Roboto-ThinItalic.ttf" />
-    <EmbeddedResource Remove="C:\Users\0jose\.nuget\packages\materialdesignthemes\5.3.2\contentFiles\any\net10.0-windows7.0\Resources\Roboto\RobotoCondensed-Bold.ttf" />
-    <EmbeddedResource Remove="C:\Users\0jose\.nuget\packages\materialdesignthemes\5.3.2\contentFiles\any\net10.0-windows7.0\Resources\Roboto\RobotoCondensed-BoldItalic.ttf" />
-    <EmbeddedResource Remove="C:\Users\0jose\.nuget\packages\materialdesignthemes\5.3.2\contentFiles\any\net10.0-windows7.0\Resources\Roboto\RobotoCondensed-Italic.ttf" />
-    <EmbeddedResource Remove="C:\Users\0jose\.nuget\packages\materialdesignthemes\5.3.2\contentFiles\any\net10.0-windows7.0\Resources\Roboto\RobotoCondensed-Light.ttf" />
-    <EmbeddedResource Remove="C:\Users\0jose\.nuget\packages\materialdesignthemes\5.3.2\contentFiles\any\net10.0-windows7.0\Resources\Roboto\RobotoCondensed-LightItalic.ttf" />
-    <EmbeddedResource Remove="C:\Users\0jose\.nuget\packages\materialdesignthemes\5.3.2\contentFiles\any\net10.0-windows7.0\Resources\Roboto\RobotoCondensed-Regular.ttf" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="Fonts\Roboto-SemiBold.ttf" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="Fonts\Roboto-SemiBold.ttf" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="MaterialDesignThemes" Version="5.3.2" />
+    <PackageReference Include="YoutubeDLSharp" Version="1.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Fonts\Roboto-SemiBold.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Themes\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Tools\ffmpeg.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Tools\ffprobe.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    
+    <EmbeddedResource Include="Tools\yt-dlp.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

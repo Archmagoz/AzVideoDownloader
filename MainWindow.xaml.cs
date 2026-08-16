@@ -1,34 +1,151 @@
 ﻿using Microsoft.Win32; // OpenFolderDialog (available on .NET 8+ / WPF)
 using System;
 using System.Collections.Generic;
-using System.Printing;
+using System.IO;
+using System.Linq;
 using System.Windows;
+using System.Windows.Input;
+
+using YoutubeDLSharp;
+
+using AzVideoDownloader.Services;
 
 namespace AzVideoDownloader
 {
     public partial class MainWindow : Window
     {
+        private readonly YoutubeDL _ytdl;
+
+        // Guards against overlapping fetches (e.g. user hits Enter twice fast)
+        private bool _isFetchingVideoInfo;
+
         public MainWindow()
         {
             InitializeComponent();
+
+            try
+            {
+                YtDlpToolManager.EnsureToolsExist();
+            }
+            catch (FileNotFoundException ex)
+            {
+                MessageBox.Show(ex.Message, "Az Video Downloader",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                Application.Current.Shutdown();
+                return;
+            }
+
+            _ytdl = new YoutubeDL
+            {
+                YoutubeDLPath = YtDlpToolManager.YtDlpPath,
+                FFmpegPath = YtDlpToolManager.FfmpegPath,
+                OutputFolder = OutputDir.Text
+            };
+
+            InputLink.KeyDown += InputLink_KeyDown;
         }
 
         // ------------------------------------------------------------
         //  TOP BAR ACTIONS
         // ------------------------------------------------------------
 
-        private void PasteLinkButton_Click(object sender, RoutedEventArgs e)
+        private async void PasteLinkButton_Click(object sender, RoutedEventArgs e)
         {
             if (Clipboard.ContainsText())
             {
                 InputLink.Text = Clipboard.GetText().Trim();
+                await FetchVideoInfoAsync(InputLink.Text);
             }
+        }
+
+        private async void InputLink_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                await FetchVideoInfoAsync(InputLink.Text);
+            }
+        }
+
+        // ------------------------------------------------------------
+        //  VIDEO INFO FETCH
+        //  Probes the given URL via yt-dlp and populates the video/audio
+        //  format lists plus the info panel on the right.
+        // ------------------------------------------------------------
+
+        private async System.Threading.Tasks.Task FetchVideoInfoAsync(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url) || _isFetchingVideoInfo)
+                return;
+
+            _isFetchingVideoInfo = true;
+            SetFetchingState(true);
+
+            try
+            {
+                var result = await _ytdl.RunVideoDataFetch(url);
+
+                if (!result.Success)
+                {
+                    MessageBox.Show(
+                        "Não foi possível carregar informações do vídeo:\n" +
+                        string.Join("\n", result.ErrorOutput),
+                        "Az Video Downloader", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                var info = result.Data;
+
+                VideoTitleText.Text = info.Title ?? "—";
+                VideoDurationText.Text = info.Duration.HasValue
+                    ? TimeSpan.FromSeconds(info.Duration.Value).ToString(@"hh\:mm\:ss")
+                    : "—";
+                VideoFpsText.Text = "—";      // set below, once a video format is selected
+                VideoBitrateText.Text = "—";
+                VideoResolutionText.Text = "—";
+                VideoSizeText.Text = "—";
+
+                var videoFormats = info.Formats
+                    .Where(f => f.VideoCodec != "none" && f.VideoCodec != null)
+                    .OrderByDescending(f => f.Height ?? 0)
+                    .Select(FormatListItem.ForVideo)
+                    .ToList();
+
+                var audioFormats = info.Formats
+                    .Where(f => f.AudioCodec != "none" && f.AudioCodec != null
+                             && (f.VideoCodec == "none" || f.VideoCodec == null))
+                    .Select(FormatListItem.ForAudio)
+                    .ToList();
+
+                VideoFormatListBox.ItemsSource = videoFormats;
+                VideoFormatListBox.DisplayMemberPath = nameof(FormatListItem.Display);
+
+                AudioFormatListBox.ItemsSource = audioFormats;
+                AudioFormatListBox.DisplayMemberPath = nameof(FormatListItem.Display);
+
+                if (videoFormats.Count > 0) VideoFormatListBox.SelectedIndex = 0;
+                if (audioFormats.Count > 0) AudioFormatListBox.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Erro inesperado ao carregar o vídeo:\n{ex.Message}",
+                    "Az Video Downloader", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                _isFetchingVideoInfo = false;
+                SetFetchingState(false);
+            }
+        }
+
+        private void SetFetchingState(bool isFetching)
+        {
+            InputLink.IsEnabled = !isFetching;
+            DownloadButton.IsEnabled = !isFetching;
+            ThumbPlaceholderText.Text = isFetching ? "Carregando..." : "Pré-visualização";
         }
 
         private void BrowseOutputButton_Click(object sender, RoutedEventArgs e)
         {
-            // .NET 8+ WPF ships a native folder picker; falls back to
-            // System.Windows.Forms.FolderBrowserDialog on older targets.
             var dialog = new OpenFolderDialog
             {
                 Title = "Selecionar pasta de saída",
@@ -79,12 +196,10 @@ namespace AzVideoDownloader
 
             if (AudioOnlyCheckBox.IsChecked == true)
             {
-                // Drop the video stream entirely, keep audio only
                 args.Add("-vn");
             }
             else if (MergeAudioVideoCheckBox.IsChecked == true)
             {
-                // Mux the selected video + audio streams without re-encoding
                 args.Add("-c copy");
             }
 
@@ -116,9 +231,6 @@ namespace AzVideoDownloader
                 // The actual container change happens by setting the output
                 // file's extension to ChangeExtensionComboBox.Text when
                 // building the final output path - no direct ffmpeg flag here.
-                // Re-encoding flags (e.g. "-c:v libx264 -c:a aac") should be
-                // added only if the source codecs are incompatible with the
-                // chosen container.
             }
 
             return args;
