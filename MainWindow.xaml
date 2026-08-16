@@ -32,7 +32,7 @@
          EmbedMetadataCheckBox    -> "-map_metadata 0"
          EmbedSubtitlesCheckBox   -> "-c:s mov_text" (mp4) or "-c:s srt" (mkv/webm)
 
-         Suggested method: BuildFfmpegArguments() in MainWindow.xaml.cs,
+         Suggested method: BuildFfmpegArguments() in Services/Ffmpegargumentbuilder.cs,
          reading each CheckBox.IsChecked and appending the matching
          flag to a List<string> before joining into the final command.
     ============================================================= -->
@@ -106,7 +106,7 @@
         </materialDesign:Card>
 
         <!-- ==================================================== -->
-        <!--  BODY: 3-column layout (formats / options / preview)  -->
+        <!--  BODY: 3-column layout (formats / options / preview) -->
         <!-- ==================================================== -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
@@ -164,7 +164,7 @@
                                      Style="{StaticResource MaterialDesignCircularProgressBar}"
                                      IsIndeterminate="True"
                                      Width="32"
-                                Height="32"
+                                     Height="32"
                                      HorizontalAlignment="Center"
                                      VerticalAlignment="Center"
                                      Visibility="Collapsed"/>

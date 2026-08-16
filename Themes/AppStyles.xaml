@@ -1,30 +1,42 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
 
     <!-- ==================================================== -->
     <!--  BUTTON STYLES                                       -->
     <!-- ==================================================== -->
 
     <!-- Primary action button (e.g., "Download", "Start") -->
-    <Style x:Key="PrimaryButton" TargetType="Button"
+    <Style x:Key="PrimaryButton"
+           TargetType="Button"
            BasedOn="{StaticResource MaterialDesignRaisedButton}">
-        <Setter Property="FontSize" Value="12" />
-        <Setter Property="FontWeight" Value="Medium" />
-        <Setter Property="Padding" Value="20,10" />
-        <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="FontSize"
+                Value="12"/>
+        <Setter Property="FontWeight"
+                Value="Medium"/>
+        <Setter Property="Padding"
+                Value="20,10"/>
+        <Setter Property="Cursor"
+                Value="Hand"/>
+        <Setter Property="HorizontalContentAlignment"
+                Value="Center"/>
         <!-- Enables the built-in progress indicator overlay (-1 = indeterminate/hidden by default) -->
-        <Setter Property="materialDesign:ButtonProgressAssist.Value" Value="-1" />
+        <Setter Property="materialDesign:ButtonProgressAssist.Value"
+                Value="-1"/>
     </Style>
 
     <!-- Secondary/auxiliary action button (e.g., "Cancel", "Clear") -->
-    <Style x:Key="SecondaryButton" TargetType="Button"
+    <Style x:Key="SecondaryButton"
+           TargetType="Button"
            BasedOn="{StaticResource MaterialDesignOutlinedButton}">
-        <Setter Property="FontSize" Value="12" />
-        <Setter Property="Padding" Value="16,8" />
-        <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="FontSize"
+                Value="12"/>
+        <Setter Property="Padding"
+                Value="16,8"/>
+        <Setter Property="Cursor"
+                Value="Hand"/>
+        <Setter Property="HorizontalContentAlignment"
+                Value="Center"/>
     </Style>
 
     <!-- ==================================================== -->
@@ -32,14 +44,18 @@
     <!-- ==================================================== -->
 
     <!-- Standard text input field (e.g., video URL, search box) -->
-    <Style x:Key="AppTextBox" TargetType="TextBox"
+    <Style x:Key="AppTextBox"
+           TargetType="TextBox"
            BasedOn="{StaticResource MaterialDesignOutlinedTextBox}">
-        <Setter Property="FontSize" Value="14" />
-        <Setter Property="TextWrapping" Value="NoWrap" />
+        <Setter Property="FontSize"
+                Value="14"/>
+        <Setter Property="TextWrapping"
+                Value="NoWrap"/>
         <Setter Property="materialDesign:HintAssist.Foreground"
-                Value="{DynamicResource MaterialDesignBodyLight}" />
+                Value="{DynamicResource MaterialDesignBodyLight}"/>
         <!-- Improves readability of pasted long text (e.g., URLs) -->
-        <Setter Property="materialDesign:TextFieldAssist.HasClearButton" Value="True" />
+        <Setter Property="materialDesign:TextFieldAssist.HasClearButton"
+                Value="True"/>
     </Style>
 
     <!-- ==================================================== -->
@@ -47,12 +63,17 @@
     <!-- ==================================================== -->
 
     <!-- Generic content card used to group related UI sections -->
-    <Style x:Key="AppCard" TargetType="materialDesign:Card">
-        <Setter Property="Padding" Value="16" />
-        <Setter Property="Margin" Value="0,0,0,12" />
-        <Setter Property="UniformCornerRadius" Value="8" />
+    <Style x:Key="AppCard"
+           TargetType="materialDesign:Card">
+        <Setter Property="Padding"
+                Value="16"/>
+        <Setter Property="Margin"
+                Value="0,0,0,12"/>
+        <Setter Property="UniformCornerRadius"
+                Value="8"/>
         <!-- Subtle elevation to visually separate the card from the background -->
-        <Setter Property="materialDesign:ElevationAssist.Elevation" Value="Dp2" />
+        <Setter Property="materialDesign:ElevationAssist.Elevation"
+                Value="Dp2"/>
     </Style>
 
 </ResourceDictionary>

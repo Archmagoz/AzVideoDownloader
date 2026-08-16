@@ -8,18 +8,22 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <materialDesign:BundledTheme BaseTheme="Light"
-                                              PrimaryColor="Indigo"
-                                              SecondaryColor="Cyan" />
+                                             PrimaryColor="Indigo"
+                                             SecondaryColor="Cyan"/>
 
-                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign2.Defaults.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign2.Defaults.xaml"/>
 
-                <ResourceDictionary Source="/Themes/Typography.xaml" />
-                <ResourceDictionary Source="/Themes/AppStyles.xaml" />
+                <ResourceDictionary Source="/Themes/Typography.xaml"/>
+                <ResourceDictionary Source="/Themes/AppStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
-            <Style TargetType="{x:Type Window}" BasedOn="{StaticResource {x:Type Window}}">
-                <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
-                <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
-                <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
+            <Style TargetType="{x:Type Window}"
+                   BasedOn="{StaticResource {x:Type Window}}">
+                <Setter Property="FontFamily"
+                        Value="{StaticResource AppFontFamily}"/>
+                <Setter Property="TextOptions.TextFormattingMode"
+                        Value="Ideal"/>
+                <Setter Property="TextOptions.TextRenderingMode"
+                        Value="ClearType"/>
             </Style>
         </ResourceDictionary>
     </Application.Resources>
