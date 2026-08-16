@@ -26,7 +26,9 @@ namespace AzVideoDownloader.Services
         {
             _ytdl.OutputFolder = outputFolder;
 
-            // Build the yt-dlp format selector from the selected formats.
+            // get the output file name template from the video title and extension
+            _ytdl.OutputFileTemplate = "%(title)s.%(ext)s";
+
             string format = BuildFormatSelector(video, audio, options);
 
             return await _ytdl.RunVideoDownload(
