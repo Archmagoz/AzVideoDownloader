@@ -15,8 +15,9 @@ namespace AzVideoDownloader
         //  SERVICES
         // ------------------------------------------------------------
         private readonly VideoInfoService _videoInfoService = null!;
-        private readonly ThumbnailService _thumbnailService = new();
+        private readonly VideoDownloadService _videoDownloadService = null!;
         private readonly DebouncedTrigger _linkDebounce = null!;
+        private readonly ThumbnailService _thumbnailService = new();
 
         // Cancels a stale in-flight fetch when a newer one supersedes it.
         private CancellationTokenSource? _fetchCts;
@@ -25,6 +26,10 @@ namespace AzVideoDownloader
         // an approximate bitrate per selected format.
         private double? _currentVideoDurationSeconds;
 
+        // Provides the actual yt-dlp/ffmpeg functionality.
+        private readonly YoutubeDL _ytdl = null!;
+
+        // Time to wait after the user stops typing before fetching video info.
         private static readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(700);
 
         public MainWindow()
@@ -43,13 +48,15 @@ namespace AzVideoDownloader
                 return;
             }
 
-            var ytdl = new YoutubeDL
+            _ytdl = new YoutubeDL
             {
                 YoutubeDLPath = YtDlpToolManager.YtDlpPath,
                 FFmpegPath = YtDlpToolManager.FfmpegPath,
                 OutputFolder = OutputDir.Text
             };
-            _videoInfoService = new VideoInfoService(ytdl);
+
+            _videoInfoService = new VideoInfoService(_ytdl);
+            _videoDownloadService = new VideoDownloadService(_ytdl);
 
             _linkDebounce = new DebouncedTrigger(DebounceDelay, OnLinkDebounceElapsed);
 
@@ -288,19 +295,41 @@ namespace AzVideoDownloader
         //  DOWNLOAD ACTION
         // ------------------------------------------------------------
 
-        private void DownloadButton_Click(object sender, RoutedEventArgs e)
+        private async void DownloadButton_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(InputLink.Text))
             {
-                MessageBox.Show("Cole o link do vídeo antes de continuar.", "Az Video Downloader",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(
+                    "Cole o link do vídeo antes de continuar.",
+                    "Az Video Downloader",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(OutputDir.Text))
             {
-                MessageBox.Show("Selecione a pasta de saída antes de continuar.", "Az Video Downloader",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(
+                    "Selecione a pasta de saída antes de continuar.",
+                    "Az Video Downloader",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+
+                return;
+            }
+
+            var selectedVideo = VideoFormatListBox.SelectedItem as FormatListItem;
+            var selectedAudio = AudioFormatListBox.SelectedItem as FormatListItem;
+
+            if (selectedVideo is null && !AudioOnlyCheckBox.IsChecked.GetValueOrDefault())
+            {
+                MessageBox.Show(
+                    "Selecione um formato de vídeo antes de continuar.",
+                    "Az Video Downloader",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+
                 return;
             }
 
@@ -315,11 +344,92 @@ namespace AzVideoDownloader
                 TargetExtension = ChangeExtensionComboBox.Text ?? "mp4"
             };
 
-            var arguments = FfmpegArgumentBuilder.Build(options);
+            try
+            {
+                DownloadButton.IsEnabled = false;
 
-            // TODO: hand off `arguments` (and the selected video/audio format IDs)
-            // to the download/transcode service, subscribing to progress events
-            // that update DownloadProgressBar.Value and ProgressPercentText.Text.
+                DownloadProgressBar.Minimum = 0;
+                DownloadProgressBar.Maximum = 100;
+                DownloadProgressBar.Value = 0;
+
+                ProgressPercentText.Text = "0%";
+
+                var progress = new Progress<DownloadProgress>(downloadProgress =>
+                {
+                    switch (downloadProgress.State)
+                    {
+                        case DownloadState.Downloading:
+                            var percentage = downloadProgress.Progress * 100.0;
+
+                            DownloadProgressBar.Value = percentage;
+                            ProgressPercentText.Text = $"{percentage:0}%";
+                            break;
+
+                        case DownloadState.PostProcessing:
+                            ProgressPercentText.Text = "Processando...";
+                            break;
+
+                        case DownloadState.Success:
+                            DownloadProgressBar.Value = 100;
+                            ProgressPercentText.Text = "100%";
+                            break;
+
+                        case DownloadState.Error:
+                            ProgressPercentText.Text = "Erro";
+                            break;
+                    }
+                });
+
+                var result = await _videoDownloadService.DownloadAsync(
+                    InputLink.Text.Trim(),
+                    OutputDir.Text,
+                    selectedVideo,
+                    selectedAudio,
+                    options,
+                    progress);
+
+                if (!result.Success)
+                {
+                    var error = result.ErrorOutput.Length > 0
+                        ? string.Join(Environment.NewLine, result.ErrorOutput)
+                        : "O download falhou.";
+
+                    MessageBox.Show(
+                        error,
+                        "Az Video Downloader",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+
+                    return;
+                }
+
+                DownloadProgressBar.Value = 100;
+                ProgressPercentText.Text = "100%";
+
+                MessageBox.Show(
+                    "Download concluído com sucesso.",
+                    "Az Video Downloader",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (OperationCanceledException)
+            {
+                ProgressPercentText.Text = "Cancelado";
+            }
+            catch (Exception ex)
+            {
+                ProgressPercentText.Text = "Erro";
+
+                MessageBox.Show(
+                    ex.Message,
+                    "Az Video Downloader",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                DownloadButton.IsEnabled = true;
+            }
         }
     }
 }
