@@ -5,7 +5,10 @@ using System.Windows.Controls;
 
 using YoutubeDLSharp;
 
-using AzVideoDownloader.Services;
+using AzVideoDownloader.Services.Fetch;
+using AzVideoDownloader.Services.Core;
+using AzVideoDownloader.Services.Models;
+using AzVideoDownloader.Services.Helpers;
 
 namespace AzVideoDownloader
 {
@@ -14,10 +17,10 @@ namespace AzVideoDownloader
         // ------------------------------------------------------------
         //  SERVICES
         // ------------------------------------------------------------
-        private readonly VideoInfoService _videoInfoService = null!;
+        private readonly GetVideoinfo _videoInfoService = null!;
         private readonly VideoDownloadService _videoDownloadService = null!;
-        private readonly DebouncedTrigger _linkDebounce = null!;
-        private readonly ThumbnailService _thumbnailService = new();
+        private readonly DebouncedTriggerHelper _linkDebounce = null!;
+        private readonly GetVideoThumbnail _thumbnailService = new();
 
         // Cancels a stale in-flight fetch when a newer one supersedes it.
         private CancellationTokenSource? _fetchCts;
@@ -38,7 +41,7 @@ namespace AzVideoDownloader
 
             try
             {
-                YtDlpToolManager.EnsureToolsExist();
+                ToolManagerService.EnsureToolsExist();
             }
             catch (FileNotFoundException ex)
             {
@@ -50,15 +53,15 @@ namespace AzVideoDownloader
 
             _ytdl = new YoutubeDL
             {
-                YoutubeDLPath = YtDlpToolManager.YtDlpPath,
-                FFmpegPath = YtDlpToolManager.FfmpegPath,
+                YoutubeDLPath = ToolManagerService.YtDlpPath,
+                FFmpegPath = ToolManagerService.FfmpegPath,
                 OutputFolder = OutputDir.Text
             };
 
-            _videoInfoService = new VideoInfoService(_ytdl);
+            _videoInfoService = new GetVideoinfo(_ytdl);
             _videoDownloadService = new VideoDownloadService(_ytdl);
 
-            _linkDebounce = new DebouncedTrigger(DebounceDelay, OnLinkDebounceElapsed);
+            _linkDebounce = new DebouncedTriggerHelper(DebounceDelay, OnLinkDebounceElapsed);
 
             VideoFormatListBox.SelectionChanged += VideoFormatListBox_SelectionChanged;
             InputLink.TextChanged += InputLink_TextChanged;
@@ -175,7 +178,7 @@ namespace AzVideoDownloader
             }
         }
 
-        private void ApplyVideoInfo(VideoInfoResult info)
+        private void ApplyVideoInfo(VideoInfoResultModel info)
         {
             _currentVideoDurationSeconds = info.DurationSeconds;
 
@@ -185,10 +188,10 @@ namespace AzVideoDownloader
                 : "—";
 
             VideoFormatListBox.ItemsSource = info.VideoFormats;
-            VideoFormatListBox.DisplayMemberPath = nameof(FormatListItem.Display);
+            VideoFormatListBox.DisplayMemberPath = nameof(GetAVFormatList.Display);
 
             AudioFormatListBox.ItemsSource = info.AudioFormats;
-            AudioFormatListBox.DisplayMemberPath = nameof(FormatListItem.Display);
+            AudioFormatListBox.DisplayMemberPath = nameof(GetAVFormatList.Display);
 
             if (info.VideoFormats.Count > 0) VideoFormatListBox.SelectedIndex = 0;
             if (info.AudioFormats.Count > 0) AudioFormatListBox.SelectedIndex = 0;
@@ -245,7 +248,7 @@ namespace AzVideoDownloader
 
         private void VideoFormatListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (VideoFormatListBox.SelectedItem is not FormatListItem item)
+            if (VideoFormatListBox.SelectedItem is not GetAVFormatList item)
             {
                 VideoFpsText.Text = "—";
                 VideoResolutionText.Text = "—";
@@ -319,8 +322,8 @@ namespace AzVideoDownloader
                 return;
             }
 
-            var selectedVideo = VideoFormatListBox.SelectedItem as FormatListItem;
-            var selectedAudio = AudioFormatListBox.SelectedItem as FormatListItem;
+            var selectedVideo = VideoFormatListBox.SelectedItem as GetAVFormatList;
+            var selectedAudio = AudioFormatListBox.SelectedItem as GetAVFormatList;
 
             if (selectedVideo is null && !AudioOnlyCheckBox.IsChecked.GetValueOrDefault())
             {

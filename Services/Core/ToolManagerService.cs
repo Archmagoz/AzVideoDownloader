@@ -1,12 +1,12 @@
 ﻿using System.IO;
 using System.Reflection;
 
-namespace AzVideoDownloader.Services
+namespace AzVideoDownloader.Services.Core
 {
     /// <summary>
     /// Extracts and resolves the bundled yt-dlp/ffmpeg/ffprobe binaries.
     /// </summary>
-    public static class YtDlpToolManager
+    public static class ToolManagerService
     {
         private const string ToolDirectoryName = "AzVideoDownloader";
 

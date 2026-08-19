@@ -1,6 +1,6 @@
 using System.Windows.Threading;
 
-namespace AzVideoDownloader.Services
+namespace AzVideoDownloader.Services.Helpers
 {
     /// <summary>
     /// Fires a callback either after a debounce delay (each call to
@@ -9,12 +9,12 @@ namespace AzVideoDownloader.Services
     /// Wraps a <see cref="DispatcherTimer"/> so callers don't need to
     /// manage Start/Stop/Tick bookkeeping themselves.
     /// </summary>
-    public sealed class DebouncedTrigger
+    public sealed class DebouncedTriggerHelper
     {
         private readonly DispatcherTimer _timer;
         private readonly Action _callback;
 
-        public DebouncedTrigger(TimeSpan delay, Action callback)
+        public DebouncedTriggerHelper(TimeSpan delay, Action callback)
         {
             _callback = callback;
             _timer = new DispatcherTimer { Interval = delay };

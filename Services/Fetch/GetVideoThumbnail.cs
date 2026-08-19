@@ -2,7 +2,7 @@ using System.IO;
 using System.Net.Http;
 using System.Windows.Media.Imaging;
 
-namespace AzVideoDownloader.Services
+namespace AzVideoDownloader.Services.Fetch
 {
     /// <summary>
     /// Downloads a thumbnail image and decodes it into a WPF-ready
@@ -10,7 +10,7 @@ namespace AzVideoDownloader.Services
     /// than setting BitmapImage.UriSource directly) avoids blocking the UI
     /// thread on the synchronous load that UriSource triggers.
     /// </summary>
-    public sealed class ThumbnailService
+    public sealed class GetVideoThumbnail
     {
         private static readonly HttpClient _httpClient = new();
 

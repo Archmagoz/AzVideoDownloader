@@ -1,6 +1,7 @@
+using AzVideoDownloader.Services.Fetch;
 using YoutubeDLSharp;
 
-namespace AzVideoDownloader.Services
+namespace AzVideoDownloader.Services.Core
 {
     public class VideoDownloadService
     {
@@ -18,8 +19,8 @@ namespace AzVideoDownloader.Services
         public async Task<RunResult<string>> DownloadAsync(
             string url,
             string outputFolder,
-            FormatListItem? video,
-            FormatListItem? audio,
+            GetAVFormatList? video,
+            GetAVFormatList? audio,
             FfmpegOptions options,
             IProgress<DownloadProgress>? progress = null,
             CancellationToken cancellationToken = default)
@@ -42,8 +43,8 @@ namespace AzVideoDownloader.Services
         /// Builds the yt-dlp format selector from the selected formats.
         /// </summary>
         private static string BuildFormatSelector(
-            FormatListItem? video,
-            FormatListItem? audio,
+            GetAVFormatList? video,
+            GetAVFormatList? audio,
             FfmpegOptions options)
         {
             if (options.AudioOnly)
