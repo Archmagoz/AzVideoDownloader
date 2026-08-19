@@ -70,7 +70,7 @@ namespace AzVideoDownloader.Services.Core
         ///    deciphering). Solved during extraction, not just download, so
         ///    both entry points need it.
         ///
-        /// 2. "--extractor-args youtube:player_client=default,web_embedded" -
+        /// 2. "--extractor-args youtube:player-client=web_embedded" -
         ///    widens which YouTube "player clients" yt-dlp queries. By
         ///    default only a small subset of clients is used, and each
         ///    client can return a different subset of dubbed-audio tracks;
@@ -96,7 +96,7 @@ namespace AzVideoDownloader.Services.Core
 
             options.AddCustomOption<string>(
                 "--extractor-args",
-                "youtube:player_client=default,web_embedded");
+                "youtube:player-client=web_embedded");
 
             return options;
         }
