@@ -36,6 +36,14 @@
          Suggested method: BuildFfmpegArguments() in Services/Ffmpegargumentbuilder.cs,
          reading each CheckBox.IsChecked and appending the matching
          flag to a List<string> before joining into the final command.
+
+         DEFAULT WORKFLOW (see MainWindow.xaml.cs):
+         Out of the box the app is configured for "merge + mp4" - merge
+         video+audio, embed thumbnail/metadata, and force mp4 output, with
+         the format lists defaulting to mp4/m4a-compatible streams whenever
+         available so no re-encode is needed. Checking "Somente áudio"
+         disables merge/subtitles (they don't apply to an audio-only output)
+         and switches the extension list to audio containers instead.
     ============================================================= -->
 
     <Grid Margin="20">
@@ -195,7 +203,12 @@
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
-                            <!-- Each toggle below maps to one ffmpeg flag; see guide at the top -->
+                            <!-- Each toggle below maps to one ffmpeg flag; see guide at the top.
+                                 AudioOnlyCheckBox.Checked/Unchecked are wired in code-behind
+                                 (see constructor) since they drive cross-control state
+                                 (enabling/disabling MergeAudioVideo/EmbedSubtitles and
+                                 swapping the extension list), matching the pattern already
+                                 used for VideoFormatListBox/InputLink event wiring below. -->
                             <CheckBox x:Name="AudioOnlyCheckBox"
                                       Content="Somente áudio (extrair)"
                                       Margin="0,0,0,10"
@@ -209,6 +222,7 @@
 
                             <CheckBox x:Name="EmbedThumbnailCheckBox"
                                       Content="Incorporar thumbnail"
+                                      IsChecked="True"
                                       Margin="0,0,0,10"
                                       FontFamily="Roboto SemiBold"/>
 
@@ -227,9 +241,14 @@
 
                             <CheckBox x:Name="ChangeExtensionCheckBox"
                                       Content="Alterar extensão de saída"
+                                      IsChecked="True"
                                       Margin="0,0,0,8"
                                       FontFamily="Roboto SemiBold"/>
 
+                            <!-- Items are seeded here with the default (video) extension
+                                 set so the designer preview looks right; MainWindow.xaml.cs
+                                 repopulates this list at runtime whenever AudioOnlyCheckBox
+                                 is toggled (video containers <-> audio containers). -->
                             <ComboBox x:Name="ChangeExtensionComboBox"
                                       Style="{StaticResource MaterialDesignOutlinedComboBox}"
                                       IsEnabled="{Binding IsChecked, ElementName=ChangeExtensionCheckBox}"

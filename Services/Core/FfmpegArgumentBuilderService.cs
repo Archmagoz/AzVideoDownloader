@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace AzVideoDownloader.Services.Core
 {
     /// <summary>
@@ -114,7 +117,12 @@ namespace AzVideoDownloader.Services.Core
             }
 
             // --- Subtitles ---------------------------------------------------
-            if (options.EmbedSubtitles)
+            // Guarded by !AudioOnly defensively: the UI disables and clears
+            // EmbedSubtitlesCheckBox whenever AudioOnly is checked (subtitles
+            // don't apply to an audio-only output), but this keeps the
+            // builder correct even if it's ever called with a stale/manually
+            // constructed FfmpegOptions where both flags are set.
+            if (options.EmbedSubtitles && !options.AudioOnly)
             {
                 // Use the ACTUAL effective output extension (post
                 // ChangeExtension logic), never assume mp4. Assuming mp4 when

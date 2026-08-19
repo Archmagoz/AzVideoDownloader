@@ -1,3 +1,4 @@
+using AzVideoDownloader.Services.Core;
 using AzVideoDownloader.Services.Models;
 using YoutubeDLSharp;
 
@@ -26,7 +27,15 @@ namespace AzVideoDownloader.Services.Fetch
         /// </summary>
         public async Task<VideoInfoResultModel?> FetchAsync(string url, CancellationToken ct)
         {
-            var result = await _ytdl.RunVideoDataFetch(url, ct: ct);
+            // Same "--js-runtimes deno:<path>" + "--extractor-args
+            // youtube:player_client=..." override used for downloads (see
+            // ToolManagerService.CreateYouTubeOverrideOptions): the JS
+            // challenge (nsig/PO token) is solved during extraction, so the
+            // metadata fetch needs it just as much as the download step.
+            var result = await _ytdl.RunVideoDataFetch(
+                url,
+                ct: ct,
+                overrideOptions: ToolManagerService.CreateYouTubeOverrideOptions());
 
             if (!result.Success)
                 return null;
@@ -42,6 +51,12 @@ namespace AzVideoDownloader.Services.Fetch
             var audioFormats = info.Formats
                 .Where(f => f.AudioCodec != "none" && f.AudioCodec != null
                          && (f.VideoCodec == "none" || f.VideoCodec == null))
+                // Sort by bitrate (highest first), same principle as the
+                // video sort above. Without this, "pick the first m4a" in
+                // MainWindow.SelectPreferredFormat could land on whatever
+                // low-bitrate stream happened to come first in yt-dlp's raw
+                // (unsorted-by-quality) format list.
+                .OrderByDescending(f => f.AudioBitrate ?? 0)
                 .Select(GetAVFormatList.ForAudio)
                 .ToList();
 

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32; // OpenFolderDialog (available on .NET 8+ / WPF)
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -35,6 +36,17 @@ namespace AzVideoDownloader
         // Time to wait after the user stops typing before fetching video info.
         private static readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(700);
 
+        // Container extensions offered by ChangeExtensionComboBox for a
+        // regular video download. Kept in sync with the ComboBoxItems
+        // declared in MainWindow.xaml so the designer preview matches the
+        // runtime default state.
+        private static readonly string[] VideoContainerExtensions = { "mp4", "mkv", "mov", "webm" };
+
+        // Container extensions offered by ChangeExtensionComboBox once
+        // "Somente áudio" is checked - video containers don't make sense
+        // for an audio-only output.
+        private static readonly string[] AudioContainerExtensions = { "mp3", "m4a", "opus", "wav" };
+
         public MainWindow()
         {
             InitializeComponent();
@@ -65,6 +77,12 @@ namespace AzVideoDownloader
 
             VideoFormatListBox.SelectionChanged += VideoFormatListBox_SelectionChanged;
             InputLink.TextChanged += InputLink_TextChanged;
+
+            // Drives the "audio only" cross-control state: disabling
+            // merge/subtitles (they don't apply to an audio-only output)
+            // and swapping the extension combo between video/audio containers.
+            AudioOnlyCheckBox.Checked += AudioOnlyCheckBox_Checked;
+            AudioOnlyCheckBox.Unchecked += AudioOnlyCheckBox_Unchecked;
 
             // Fires for BOTH Ctrl+V and the right-click "Paste" context menu
             // item, since both route through the same WPF paste command.
@@ -193,8 +211,33 @@ namespace AzVideoDownloader
             AudioFormatListBox.ItemsSource = info.AudioFormats;
             AudioFormatListBox.DisplayMemberPath = nameof(GetAVFormatList.Display);
 
-            if (info.VideoFormats.Count > 0) VideoFormatListBox.SelectedIndex = 0;
-            if (info.AudioFormats.Count > 0) AudioFormatListBox.SelectedIndex = 0;
+            // Default the selection to mp4/m4a-compatible streams rather
+            // than blindly picking index 0: the app's default workflow is
+            // "merge + change extension to mp4", and starting from a
+            // format that already matches that container avoids an
+            // unnecessary (slow, lossy) re-encode during download.
+            VideoFormatListBox.SelectedItem = SelectPreferredFormat(info.VideoFormats, preferredExtension: "mp4");
+            AudioFormatListBox.SelectedItem = SelectPreferredFormat(info.AudioFormats, preferredExtension: "m4a");
+        }
+
+        /// <summary>
+        /// Picks the first format whose container extension matches
+        /// <paramref name="preferredExtension"/>, falling back to the first
+        /// available format when no match exists (e.g. a source that only
+        /// offers webm). Returns <see langword="null"/> when the list is empty.
+        /// </summary>
+        private static GetAVFormatList? SelectPreferredFormat(
+            IReadOnlyList<GetAVFormatList> formats,
+            string preferredExtension)
+        {
+            if (formats.Count == 0)
+            {
+                return null;
+            }
+
+            return formats.FirstOrDefault(f =>
+                       string.Equals(f.Source.Extension, preferredExtension, StringComparison.OrdinalIgnoreCase))
+                   ?? formats[0];
         }
 
         private void SetFetchingState(bool isFetching)
@@ -277,6 +320,62 @@ namespace AzVideoDownloader
         }
 
         // ------------------------------------------------------------
+        //  FFMPEG OPTIONS
+        //  "Somente áudio" changes what the other ffmpeg options mean:
+        //  merging separate streams and embedding subtitles no longer
+        //  apply, and the output container should be an audio format.
+        // ------------------------------------------------------------
+
+        private void AudioOnlyCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            // Merging audio+video streams and embedding subtitles are
+            // meaningless once we're extracting audio only - disable both
+            // (and clear their checked state) so a stale IsChecked=true
+            // can't leak into FfmpegOptions while the controls are hidden
+            // from interaction.
+            MergeAudioVideoCheckBox.IsEnabled = false;
+            MergeAudioVideoCheckBox.IsChecked = false;
+
+            EmbedSubtitlesCheckBox.IsEnabled = false;
+            EmbedSubtitlesCheckBox.IsChecked = false;
+
+            PopulateExtensionComboBox(AudioContainerExtensions, preferredDefault: "mp3");
+        }
+
+        private void AudioOnlyCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            // Restore the default "merge" workflow; subtitles stay
+            // unchecked since that was its original default state too.
+            MergeAudioVideoCheckBox.IsEnabled = true;
+            MergeAudioVideoCheckBox.IsChecked = true;
+
+            EmbedSubtitlesCheckBox.IsEnabled = true;
+
+            PopulateExtensionComboBox(VideoContainerExtensions, preferredDefault: "mp4");
+        }
+
+        /// <summary>
+        /// Replaces <see cref="ChangeExtensionComboBox"/>'s items with
+        /// <paramref name="extensions"/> and selects <paramref name="preferredDefault"/>
+        /// (falling back to the first entry if it isn't present).
+        /// </summary>
+        private void PopulateExtensionComboBox(IReadOnlyList<string> extensions, string preferredDefault)
+        {
+            ChangeExtensionComboBox.Items.Clear();
+
+            foreach (var extension in extensions)
+            {
+                ChangeExtensionComboBox.Items.Add(new ComboBoxItem { Content = extension });
+            }
+
+            var items = ChangeExtensionComboBox.Items.Cast<ComboBoxItem>();
+            var defaultItem = items.FirstOrDefault(item =>
+                string.Equals((string)item.Content, preferredDefault, StringComparison.OrdinalIgnoreCase));
+
+            ChangeExtensionComboBox.SelectedItem = defaultItem ?? ChangeExtensionComboBox.Items.Cast<ComboBoxItem>().FirstOrDefault();
+        }
+
+        // ------------------------------------------------------------
         //  OUTPUT FOLDER
         // ------------------------------------------------------------
 
@@ -344,7 +443,11 @@ namespace AzVideoDownloader
                 EmbedMetadata = EmbedMetadataCheckBox.IsChecked == true,
                 EmbedSubtitles = EmbedSubtitlesCheckBox.IsChecked == true,
                 ChangeExtension = ChangeExtensionCheckBox.IsChecked == true,
-                TargetExtension = ChangeExtensionComboBox.Text ?? "mp4"
+                TargetExtension = ChangeExtensionComboBox.Text ?? "mp4",
+                // Falls back to the source video's extension so ffmpeg
+                // argument logic (e.g. subtitle codec selection) still has
+                // the correct effective container when ChangeExtension is off.
+                SourceExtension = selectedVideo?.Source.Extension ?? "mp4"
             };
 
             try

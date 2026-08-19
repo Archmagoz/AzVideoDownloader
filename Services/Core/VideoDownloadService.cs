@@ -36,7 +36,8 @@ namespace AzVideoDownloader.Services.Core
                 url,
                 format,
                 ct: cancellationToken,
-                progress: progress);
+                progress: progress,
+                overrideOptions: ToolManagerService.CreateYouTubeOverrideOptions());
         }
 
         /// <summary>
