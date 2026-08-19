@@ -1,6 +1,7 @@
+using YoutubeDLSharp;
+
 using AzVideoDownloader.Services.Core;
 using AzVideoDownloader.Services.Models;
-using YoutubeDLSharp;
 
 namespace AzVideoDownloader.Services.Fetch
 {
@@ -25,7 +26,7 @@ namespace AzVideoDownloader.Services.Fetch
         /// if <paramref name="ct"/> is cancelled - callers already handle
         /// that for debounce/supersede logic, so we don't swallow it here.
         /// </summary>
-        public async Task<VideoInfoResultModel?> FetchAsync(string url, CancellationToken ct)
+        public async Task<VideoInfoResult?> FetchAsync(string url, CancellationToken ct)
         {
             // Same "--js-runtimes deno:<path>" + "--extractor-args
             // youtube:player_client=..." override used for downloads (see
@@ -60,7 +61,7 @@ namespace AzVideoDownloader.Services.Fetch
                 .Select(GetAVFormatList.ForAudio)
                 .ToList();
 
-            return new VideoInfoResultModel
+            return new VideoInfoResult
             {
                 Title = info.Title ?? "—",
                 DurationSeconds = info.Duration,

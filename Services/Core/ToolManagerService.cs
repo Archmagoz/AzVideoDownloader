@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Reflection;
+
 using YoutubeDLSharp.Options;
 
 namespace AzVideoDownloader.Services.Core
@@ -65,7 +66,7 @@ namespace AzVideoDownloader.Services.Core
         ///
         /// Two overrides are bundled here:
         ///
-        /// 1. "--js-runtimes deno:&lt;DenoPath&gt;" - pins the bundled Deno
+        /// 1. "--js-runtimes "deno:{DenoPath}" - pins the bundled Deno
         ///    runtime for YouTube's JS challenge solving (nsig/PO token
         ///    deciphering). Solved during extraction, not just download, so
         ///    both entry points need it.

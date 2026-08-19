@@ -1,6 +1,5 @@
 ﻿using Microsoft.Win32; // OpenFolderDialog (available on .NET 8+ / WPF)
 using System.IO;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -19,9 +18,9 @@ namespace AzVideoDownloader
         //  SERVICES
         // ------------------------------------------------------------
         private readonly GetVideoinfo _videoInfoService = null!;
+        private readonly GetVideoThumbnail _thumbnailService = new();
         private readonly VideoDownloadService _videoDownloadService = null!;
         private readonly DebouncedTriggerHelper _linkDebounce = null!;
-        private readonly GetVideoThumbnail _thumbnailService = new();
 
         // Cancels a stale in-flight fetch when a newer one supersedes it.
         private CancellationTokenSource? _fetchCts;
@@ -196,7 +195,7 @@ namespace AzVideoDownloader
             }
         }
 
-        private void ApplyVideoInfo(VideoInfoResultModel info)
+        private void ApplyVideoInfo(VideoInfoResult info)
         {
             _currentVideoDurationSeconds = info.DurationSeconds;
 

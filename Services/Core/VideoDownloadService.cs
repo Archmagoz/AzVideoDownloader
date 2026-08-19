@@ -1,5 +1,7 @@
-using AzVideoDownloader.Services.Fetch;
 using YoutubeDLSharp;
+
+using AzVideoDownloader.Services.Fetch;
+using AzVideoDownloader.Services.Models;
 
 namespace AzVideoDownloader.Services.Core
 {

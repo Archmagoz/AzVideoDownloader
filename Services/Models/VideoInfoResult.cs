@@ -6,7 +6,7 @@ namespace AzVideoDownloader.Services.Models
     /// Plain data returned by <see cref="GetVideoInfo"/>, decoupled from
     /// both the raw yt-dlp <c>VideoData</c> shape and any UI controls.
     /// </summary>
-    public sealed class VideoInfoResultModel
+    public sealed class VideoInfoResult
     {
         public string Title { get; init; } = "—";
         public double? DurationSeconds { get; init; }
