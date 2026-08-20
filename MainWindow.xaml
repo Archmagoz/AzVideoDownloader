@@ -16,36 +16,6 @@
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         Icon="icon.ico">
 
-    <!-- ============================================================
-         FFMPEG COMMAND-BUILDING GUIDE (for code-behind reference)
-         ============================================================
-         Each checkbox below is meant to toggle a flag that gets
-         appended when assembling the ffmpeg argument list:
-
-         AudioOnlyCheckBox        -> "-vn" (drop video stream, extract audio only)
-         MergeAudioVideoCheckBox  -> "-c copy" (mux selected video+audio streams
-                                      without re-encoding, when codecs are compatible)
-         ChangeExtensionCheckBox  -> forces output container via ChangeExtensionComboBox
-                                      (may require re-encoding: "-c:v libx264 -c:a aac"
-                                      if the target container doesn't support the
-                                      source codecs)
-         EmbedThumbnailCheckBox   -> "-map 0 -map 1 -c copy -disposition:v:1 attached_pic"
-         EmbedMetadataCheckBox    -> "-map_metadata 0"
-         EmbedSubtitlesCheckBox   -> "-c:s mov_text" (mp4) or "-c:s srt" (mkv/webm)
-
-         Suggested method: BuildFfmpegArguments() in Services/Ffmpegargumentbuilder.cs,
-         reading each CheckBox.IsChecked and appending the matching
-         flag to a List<string> before joining into the final command.
-
-         DEFAULT WORKFLOW (see MainWindow.xaml.cs):
-         Out of the box the app is configured for "merge + mp4" - merge
-         video+audio, embed thumbnail/metadata, and force mp4 output, with
-         the format lists defaulting to mp4/m4a-compatible streams whenever
-         available so no re-encode is needed. Checking "Somente áudio"
-         disables merge/subtitles (they don't apply to an audio-only output)
-         and switches the extension list to audio containers instead.
-    ============================================================= -->
-
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -192,7 +162,7 @@
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0"
-                               Text="OPÇÕES (FFMPEG)"
+                               Text="OPÇÕES"
                                Style="{StaticResource AppHeading2}"
                                Margin="0,0,0,12"/>
 
@@ -266,7 +236,7 @@
 
                     <Button x:Name="DownloadButton"
                             Grid.Row="2"
-                            Content="DOWNLOAD"
+                            Content="BAIXAR"
                             Style="{StaticResource PrimaryButton}"
                             Margin="0,18,0,0"
                             Click="DownloadButton_Click"

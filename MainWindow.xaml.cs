@@ -42,9 +42,10 @@ namespace AzVideoDownloader
         private static readonly string[] VideoContainerExtensions = { "mp4", "mkv", "mov", "webm" };
 
         // Container extensions offered by ChangeExtensionComboBox once
-        // "Somente áudio" is checked - video containers don't make sense
-        // for an audio-only output.
-        private static readonly string[] AudioContainerExtensions = { "mp3", "m4a", "opus", "wav" };
+        // "Somente áudio" is checked. Sourced from YtDlpAudioFormats so this
+        // list and the --audio-format mapping (incl. "ogg" -> "vorbis")
+        // never drift apart.
+        private static readonly string[] AudioContainerExtensions = YtDlpAudioFormats.UiSelectableLabels;
 
         public MainWindow()
         {
@@ -319,10 +320,10 @@ namespace AzVideoDownloader
         }
 
         // ------------------------------------------------------------
-        //  FFMPEG OPTIONS
-        //  "Somente áudio" changes what the other ffmpeg options mean:
-        //  merging separate streams and embedding subtitles no longer
-        //  apply, and the output container should be an audio format.
+        //  YT-DLP OPTIONS
+        //  "Somente áudio" changes what the other options mean: merging
+        //  separate streams and embedding subtitles no longer apply, and
+        //  the output container should be an audio format.
         // ------------------------------------------------------------
 
         private void AudioOnlyCheckBox_Checked(object sender, RoutedEventArgs e)
@@ -330,13 +331,19 @@ namespace AzVideoDownloader
             // Merging audio+video streams and embedding subtitles are
             // meaningless once we're extracting audio only - disable both
             // (and clear their checked state) so a stale IsChecked=true
-            // can't leak into FfmpegOptions while the controls are hidden
+            // can't leak into YtDlpOptions while the controls are hidden
             // from interaction.
             MergeAudioVideoCheckBox.IsEnabled = false;
             MergeAudioVideoCheckBox.IsChecked = false;
 
             EmbedSubtitlesCheckBox.IsEnabled = false;
             EmbedSubtitlesCheckBox.IsChecked = false;
+
+            // Picking a video format is meaningless once we're only
+            // extracting audio - grey the list out so it visually reads as
+            // "not applicable" rather than just quietly being ignored at
+            // download time.
+            VideoFormatListBox.IsEnabled = false;
 
             PopulateExtensionComboBox(AudioContainerExtensions, preferredDefault: "mp3");
         }
@@ -349,6 +356,8 @@ namespace AzVideoDownloader
             MergeAudioVideoCheckBox.IsChecked = true;
 
             EmbedSubtitlesCheckBox.IsEnabled = true;
+
+            VideoFormatListBox.IsEnabled = true;
 
             PopulateExtensionComboBox(VideoContainerExtensions, preferredDefault: "mp4");
         }
@@ -420,10 +429,12 @@ namespace AzVideoDownloader
                 return;
             }
 
+            var isAudioOnly = AudioOnlyCheckBox.IsChecked == true;
+
             var selectedVideo = VideoFormatListBox.SelectedItem as GetAVFormatList;
             var selectedAudio = AudioFormatListBox.SelectedItem as GetAVFormatList;
 
-            if (selectedVideo is null && !AudioOnlyCheckBox.IsChecked.GetValueOrDefault())
+            if (selectedVideo is null && !isAudioOnly)
             {
                 MessageBox.Show(
                     "Selecione um formato de vídeo antes de continuar.",
@@ -434,19 +445,35 @@ namespace AzVideoDownloader
                 return;
             }
 
-            var options = new FfmpegOptions
+            // NOTE: audio-only downloads no longer go through a manual
+            // ffmpeg "-vn" call. yt-dlp's own "-x" extracts the best
+            // available audio for us (picking a real audio-only stream
+            // when the site offers one, instead of assuming a combined
+            // video+audio file was already downloaded), and
+            // "--audio-format" handles the conversion - see
+            // YtDlpArgumentBuilderService. This is also why the previous
+            // "somente áudio não funciona" symptom should be gone: before,
+            // a video format still had to be selected/downloaded for "-vn"
+            // to have anything to strip.
+            var options = new YtDlpOptions
             {
-                AudioOnly = AudioOnlyCheckBox.IsChecked == true,
+                AudioOnly = isAudioOnly,
+                AudioFormat = isAudioOnly ? (ChangeExtensionComboBox.Text ?? "mp3") : "mp3",
+
+                VideoFormatId = selectedVideo?.Source.FormatId,
+                AudioFormatId = selectedAudio?.Source.FormatId,
                 MergeAudioVideo = MergeAudioVideoCheckBox.IsChecked == true,
+
                 EmbedThumbnail = EmbedThumbnailCheckBox.IsChecked == true,
                 EmbedMetadata = EmbedMetadataCheckBox.IsChecked == true,
                 EmbedSubtitles = EmbedSubtitlesCheckBox.IsChecked == true,
+
                 ChangeExtension = ChangeExtensionCheckBox.IsChecked == true,
-                TargetExtension = ChangeExtensionComboBox.Text ?? "mp4",
-                // Falls back to the source video's extension so ffmpeg
-                // argument logic (e.g. subtitle codec selection) still has
-                // the correct effective container when ChangeExtension is off.
-                SourceExtension = selectedVideo?.Source.Extension ?? "mp4"
+                TargetContainer = !isAudioOnly ? (ChangeExtensionComboBox.Text ?? "mp4") : "mp4",
+                // Falls back to the source video's extension so the
+                // effective container is still correct when ChangeExtension
+                // is off (e.g. an unmodified webm source stays webm).
+                SourceContainer = selectedVideo?.Source.Extension ?? "mp4"
             };
 
             try

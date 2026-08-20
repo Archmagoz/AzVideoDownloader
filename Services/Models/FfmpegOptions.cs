@@ -3,23 +3,21 @@ namespace AzVideoDownloader.Services.Models
     /// <summary>
     /// Plain snapshot of the ffmpeg-related checkbox/combo state, so the
     /// argument-building logic doesn't need to touch any UI control directly.
+    ///
+    /// NOTE: thumbnail/metadata/subtitle embedding and audio extraction were
+    /// moved to <see cref="YtDlpOptions"/> + YtDlpArgumentBuilderService,
+    /// since yt-dlp's own postprocessors (--embed-thumbnail, --embed-metadata,
+    /// --embed-subs, -x/--audio-format) already call ffmpeg internally and
+    /// handle format-compatibility edge cases (e.g. webp thumbnail -> jpg,
+    /// mov_text vs srt) that we'd otherwise have to reimplement by hand.
+    ///
+    /// What's left here is only the state relevant to a raw "merge these two
+    /// already-downloaded streams / change the container" ffmpeg invocation.
     /// </summary>
     public sealed class FfmpegOptions
     {
-        /// <summary>Strip the video stream and keep audio only.</summary>
-        public bool AudioOnly { get; set; }
-
         /// <summary>Mux pre-downloaded audio and video streams without re-encoding.</summary>
         public bool MergeAudioVideo { get; set; }
-
-        /// <summary>Embed a thumbnail image as an attached picture stream.</summary>
-        public bool EmbedThumbnail { get; set; }
-
-        /// <summary>Copy all metadata from the first input to the output.</summary>
-        public bool EmbedMetadata { get; set; }
-
-        /// <summary>Embed subtitle streams into the output container.</summary>
-        public bool EmbedSubtitles { get; set; }
 
         /// <summary>Whether the output container extension differs from the source.</summary>
         public bool ChangeExtension { get; set; }
@@ -40,9 +38,7 @@ namespace AzVideoDownloader.Services.Models
 
         /// <summary>
         /// Resolves the effective output container extension, taking
-        /// <see cref="ChangeExtension"/> into account. This is the single
-        /// source of truth other logic (e.g. subtitle codec selection)
-        /// should use instead of assuming a fixed value.
+        /// <see cref="ChangeExtension"/> into account.
         /// </summary>
         public string EffectiveExtension =>
             ChangeExtension ? TargetExtension : SourceExtension;
