@@ -115,4 +115,4 @@ Se você utiliza este aplicativo com frequência, considere apoiar os projetos o
 
 ## Licença
 
-Este projeto é distribuído sob os termos da licença definida no arquivo [`LICENSE.txt`](LICENSE).
+Este projeto é distribuído sob os termos da licença definida no arquivo [`LICENSE`](LICENSE.txt).
