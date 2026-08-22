@@ -1,30 +1,118 @@
 # Az Video Downloader
 
-Um wrapper simples com interface gráfica para baixar vídeos e áudios, pensado para quem não tem familiaridade com linha de comando. A ideia não é reinventar nada — só colocar uma interface amigável em cima de ferramentas que já fazem esse trabalho muito bem.
+Um wrapper com interface gráfica para **yt-dlp**, desenvolvido em WPF para facilitar o download de vídeos e áudios sem a necessidade de usar linha de comando.
+
+A ideia não é reinventar o processo de download, mas oferecer uma interface simples para ferramentas que já fazem esse trabalho muito bem.
 
 ## Interface
 
-![alt text](image.png)
+![Az Video Downloader](image.png)
 
-## O que dá pra fazer
+## Recursos
 
-- Colar um link e visualizar informações do vídeo (título, duração, resolução, tamanho) antes de baixar
-- Escolher formatos de vídeo e áudio separadamente
-- Mesclar vídeo + áudio automaticamente
-- Extrair somente o áudio, em `mp3`, `m4a`, `opus`, `ogg`, `flac`, `wav` ou `aac`
-- Trocar o container de saída (`mp4`, `mkv`, `mov`, `webm`)
-- Incorporar thumbnail, metadados e legendas no arquivo final
+* Visualizar informações do vídeo antes do download:
 
-## Créditos
+  * Título
+  * Duração
+  * Resolução
+  * Tamanho
+* Selecionar formatos de vídeo e áudio separadamente
+* Mesclar automaticamente vídeo e áudio
+* Baixar somente o áudio
+* Converter áudio para:
 
-Este projeto é só uma camada de interface. Todo o trabalho pesado é feito por:
+  * MP3
+  * M4A
+  * Opus
+  * OGG
+  * FLAC
+  * WAV
+  * AAC
+* Escolher o container de saída:
 
-- **[yt-dlp](https://github.com/yt-dlp/yt-dlp)** — extração de informações e download dos vídeos/áudios de origem.
-- **[FFmpeg](https://ffmpeg.org/)** — conversão, mesclagem de streams e todo o processamento de mídia.
-- **[Deno](https://deno.com/)** - requerimento do yt-dlp.
+  * MP4
+  * MKV
+  * MOV
+  * WebM
+* Incorporar thumbnail ao arquivo final
+* Incorporar metadados
+* Incorporar legendas
+* Processamento de mídia através do FFmpeg
+* Utilizar o Deno necessário para determinados recursos do yt-dlp
 
-Sem essas ferramentas (e as pessoas que as mantêm) este projeto simplesmente não existiria. Se você usa este app com frequência, considere apoiar esses projetos.
+## Como funciona
+
+O Az Video Downloader atua como uma camada gráfica sobre ferramentas de linha de comando já consolidadas:
+
+```text
+                    Az Video Downloader
+                            │
+                            ▼
+                       ┌─────────┐
+                       │ yt-dlp  │
+                       └────┬────┘
+                            │
+              ┌─────────────┴─────────────┐
+              │                           │
+        Informações                    Download
+        do conteúdo                       │
+                                          ▼
+                                    ┌──────────┐
+                                    │  FFmpeg  │
+                                    └────┬─────┘
+                                         │
+                                         ▼
+                                   Arquivo final
+```
+
+O aplicativo não realiza diretamente a extração ou conversão dos streams. Essas tarefas são delegadas às ferramentas responsáveis por elas.
+
+## Dependências
+
+O aplicativo utiliza:
+
+* [yt-dlp](https://github.com/yt-dlp/yt-dlp) — extração de informações e download dos conteúdos.
+* [FFmpeg](https://ffmpeg.org/) — conversão, mesclagem de streams e processamento de mídia.
+* [Deno](https://deno.com/) — runtime utilizado pelo yt-dlp para determinados desafios de JavaScript do YouTube.
+
+As ferramentas necessárias são distribuídas junto com o aplicativo.
+
+## Requisitos
+
+* Windows 10 ou superior
+* Windows x64
+* Conexão com a internet
+
+Não é necessário instalar Python, FFmpeg, yt-dlp ou Deno separadamente ao utilizar a versão distribuída do aplicativo.
+
+## Uso
+
+1. Abra o **Az Video Downloader**.
+2. Cole a URL do vídeo.
+3. Aguarde o carregamento das informações disponíveis.
+4. Selecione o formato de vídeo e/ou áudio desejado.
+5. Escolha as opções de processamento.
+6. Inicie o download.
+7. O arquivo será processado e salvo no local selecionado.
 
 ## Aviso
 
-Baixe apenas conteúdo que você tem direito de baixar. O uso desta ferramenta é de responsabilidade de quem a utiliza 😉.
+Use esta ferramenta apenas para baixar conteúdo que você tenha permissão ou direito de baixar.
+
+O Az Video Downloader é apenas uma interface para ferramentas de terceiros e **não fornece nem hospeda conteúdo protegido por direitos autorais**.
+
+O uso da aplicação é de responsabilidade do usuário.
+
+## Créditos
+
+Este projeto não seria possível sem os projetos que fazem o trabalho pesado:
+
+* **[yt-dlp](https://github.com/yt-dlp/yt-dlp)** — projeto responsável pela extração e download.
+* **[FFmpeg](https://ffmpeg.org/)** — projeto responsável pelo processamento e conversão de mídia.
+* **[Deno](https://deno.com/)** — runtime utilizado pelo yt-dlp.
+
+Se você utiliza este aplicativo com frequência, considere apoiar os projetos originais e seus mantenedores.
+
+## Licença
+
+Este projeto é distribuído sob os termos da licença definida no arquivo [`LICENSE`](LICENSE).
