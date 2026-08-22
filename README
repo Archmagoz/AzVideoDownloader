@@ -1,0 +1,30 @@
+# Az Video Downloader
+
+Um wrapper simples com interface gráfica para baixar vídeos e áudios, pensado para quem não tem familiaridade com linha de comando. A ideia não é reinventar nada — só colocar uma interface amigável em cima de ferramentas que já fazem esse trabalho muito bem.
+
+## Interface
+
+![alt text](image.png)
+
+## O que dá pra fazer
+
+- Colar um link e visualizar informações do vídeo (título, duração, resolução, tamanho) antes de baixar
+- Escolher formatos de vídeo e áudio separadamente
+- Mesclar vídeo + áudio automaticamente
+- Extrair somente o áudio, em `mp3`, `m4a`, `opus`, `ogg`, `flac`, `wav` ou `aac`
+- Trocar o container de saída (`mp4`, `mkv`, `mov`, `webm`)
+- Incorporar thumbnail, metadados e legendas no arquivo final
+
+## Créditos
+
+Este projeto é só uma camada de interface. Todo o trabalho pesado é feito por:
+
+- **[yt-dlp](https://github.com/yt-dlp/yt-dlp)** — extração de informações e download dos vídeos/áudios de origem.
+- **[FFmpeg](https://ffmpeg.org/)** — conversão, mesclagem de streams e todo o processamento de mídia.
+- **[Deno](https://deno.com/)** - requerimento do yt-dlp.
+
+Sem essas ferramentas (e as pessoas que as mantêm) este projeto simplesmente não existiria. Se você usa este app com frequência, considere apoiar esses projetos.
+
+## Aviso
+
+Baixe apenas conteúdo que você tem direito de baixar. O uso desta ferramenta é de responsabilidade de quem a utiliza 😉.

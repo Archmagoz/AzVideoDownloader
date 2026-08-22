@@ -40,7 +40,7 @@
                 <Grid Grid.Column="0">
                     <TextBox x:Name="InputLink"
                              Style="{StaticResource AppTextBox}"
-                             materialDesign:HintAssist.Hint="🔗 Cole o link do vídeo aqui"
+                             materialDesign:HintAssist.Hint="Cole o link do vídeo aqui"
                              materialDesign:TextFieldAssist.PrefixText="🔗"
                              Margin="44,0,0,0"/>
 
