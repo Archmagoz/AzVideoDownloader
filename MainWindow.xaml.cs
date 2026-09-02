@@ -434,7 +434,15 @@ namespace AzVideoDownloader
             var selectedVideo = VideoFormatListBox.SelectedItem as GetAVFormatList;
             var selectedAudio = AudioFormatListBox.SelectedItem as GetAVFormatList;
 
-            if (selectedVideo is null && !isAudioOnly)
+            // Only block on "no video format selected" when there actually
+            // were formats to choose from. An empty list (site/video with
+            // no per-format listing, or a fetch that returned nothing)
+            // isn't a user mistake - VideoDownloadService.BuildVideoFormatSelector
+            // falls back to a default yt-dlp selector in that case.
+            var hasVideoFormatsAvailable = VideoFormatListBox.ItemsSource is IReadOnlyCollection<GetAVFormatList> videoFormats
+                && videoFormats.Count > 0;
+
+            if (selectedVideo is null && !isAudioOnly && hasVideoFormatsAvailable)
             {
                 MessageBox.Show(
                     "Selecione um formato de vídeo antes de continuar.",

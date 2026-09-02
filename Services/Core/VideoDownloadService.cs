@@ -38,7 +38,7 @@ namespace AzVideoDownloader.Services.Core
             _ytdl.OutputFolder = outputFolder;
             _ytdl.OutputFileTemplate = "%(title)s.%(ext)s";
 
-            var overrideOptions = BuildOverrideOptions(options);
+            var overrideOptions = BuildOverrideOptions(options, url);
 
             if (options.AudioOnly)
             {
@@ -67,6 +67,16 @@ namespace AzVideoDownloader.Services.Core
         }
 
         /// <summary>
+        /// Fallback yt-dlp format selector used when the format list
+        /// returned no video/audio to pick from (e.g. site without
+        /// per-format listing support, or the list came back empty).
+        /// Prefers a separate mp4 video + m4a audio pair (so they can be
+        /// merged without a re-encode), falling back to a single combined
+        /// mp4 stream if that pairing isn't available.
+        /// </summary>
+        private const string DefaultFormatSelector = "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]";
+
+        /// <summary>
         /// Builds the yt-dlp format selector from the selected video/audio
         /// formats. Unrelated to audio-only downloads - those go through
         /// RunAudioDownload above instead.
@@ -76,13 +86,17 @@ namespace AzVideoDownloader.Services.Core
             GetAVFormatList? audio,
             YtDlpOptions options)
         {
-            if (video is null)
-                return "bestvideo+bestaudio/best";
+            // No video to work with at all - fall back.
+            // Also fall back when merge is requested but there's no audio
+            // format to merge with (video-only stream + MergeAudioVideo
+            // would otherwise silently ship without audio).
+            if (video is null || (options.MergeAudioVideo && audio is null))
+                return DefaultFormatSelector;
 
-            if (!options.MergeAudioVideo || audio is null)
+            if (!options.MergeAudioVideo)
                 return video.Source.FormatId;
 
-            return $"{video.Source.FormatId}+{audio.Source.FormatId}";
+            return $"{video.Source.FormatId}+{audio!.Source.FormatId}";
         }
 
         /// <summary>
@@ -137,10 +151,19 @@ namespace AzVideoDownloader.Services.Core
         /// in PascalCase (--embed-thumbnail -> EmbedThumbnail, etc). If any
         /// of these don't match your installed package version, IntelliSense
         /// on "overrideOptions." will show the real name to swap in.
+        ///
+        /// CHANGED: ToolManagerService.CreateYouTubeOverrideOptions() (which
+        /// sets --js-runtimes/--extractor-args, both YouTube-extractor
+        /// specific) is only layered in when the target URL is actually a
+        /// YouTube URL. For any other site we start from a plain OptionSet
+        /// so yt-dlp doesn't get YouTube-only extractor args on unrelated
+        /// sites.
         /// </summary>
-        private static OptionSet BuildOverrideOptions(YtDlpOptions options)
+        private static OptionSet BuildOverrideOptions(YtDlpOptions options, string url)
         {
-            var overrideOptions = ToolManagerService.CreateYouTubeOverrideOptions();
+            var overrideOptions = IsYouTubeUrl(url)
+                ? ToolManagerService.CreateYouTubeOverrideOptions()
+                : new OptionSet();
 
             overrideOptions.EmbedThumbnail = options.EmbedThumbnail
                 && (!options.AudioOnly || YtDlpAudioFormats.SupportsEmbeddedThumbnail(options.AudioFormat));
@@ -165,6 +188,19 @@ namespace AzVideoDownloader.Services.Core
             }
 
             return overrideOptions;
+        }
+
+        /// <summary>
+        /// Detects whether the target URL is a YouTube URL (youtube.com,
+        /// youtu.be, m.youtube.com, music.youtube.com, etc). Used to decide
+        /// whether ToolManagerService.CreateYouTubeOverrideOptions()
+        /// (--js-runtimes/--extractor-args) should be applied - those flags
+        /// only make sense against the YouTube extractor.
+        /// </summary>
+        private static bool IsYouTubeUrl(string url)
+        {
+            return url.Contains("youtube.com", StringComparison.OrdinalIgnoreCase)
+                || url.Contains("youtu.be", StringComparison.OrdinalIgnoreCase);
         }
     }
 }
