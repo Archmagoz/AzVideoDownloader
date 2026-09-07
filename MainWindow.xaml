@@ -58,15 +58,16 @@
                     </Button>
                 </Grid>
 
-                <!-- Output directory picker -->
+                <!-- Output directory picker and recent directory history -->
                 <Grid Grid.Column="2"
                       Margin="0,0,-8,0">
-                    <TextBox x:Name="OutputDir"
-                             Style="{StaticResource AppTextBox}"
-                             IsReadOnly="True"
-                             materialDesign:HintAssist.Hint="Pasta de saída"
-                             materialDesign:TextFieldAssist.PrefixText="📁"
-                             Margin="0,0,52,0"/>
+                    <ComboBox x:Name="OutputDir"
+                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                              IsEditable="False"
+                              materialDesign:HintAssist.Hint="Pasta de saída"
+                              materialDesign:TextFieldAssist.PrefixText="📁"
+                              Margin="0,0,52,0"
+                              SelectionChanged="OutputDir_SelectionChanged"/>
 
                     <!-- Folder browser, half inside / half outside the field -->
                     <Button x:Name="BrowseOutputButton"

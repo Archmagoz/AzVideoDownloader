@@ -50,6 +50,7 @@ namespace AzVideoDownloader
         public MainWindow()
         {
             InitializeComponent();
+            LoadRecentOutputDirectories();
 
             try
             {
@@ -387,6 +388,11 @@ namespace AzVideoDownloader
         //  OUTPUT FOLDER
         // ------------------------------------------------------------
 
+        private const int MaxRecentOutputDirectories = 5;
+
+        /// <summary>
+        /// Opens the folder browser and sets the selected output directory.
+        /// </summary>
         private void BrowseOutputButton_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new OpenFolderDialog
@@ -395,9 +401,144 @@ namespace AzVideoDownloader
                 Multiselect = false
             };
 
-            if (dialog.ShowDialog() == true)
+            if (dialog.ShowDialog() != true)
+                return;
+
+            SetOutputDirectory(dialog.FolderName, addToHistory: true);
+        }
+
+        /// <summary>
+        /// Sets the active output directory and optionally updates the recent
+        /// directory history.
+        /// </summary>
+        private void SetOutputDirectory(string directory, bool addToHistory)
+        {
+            if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
+                return;
+
+            if (addToHistory)
             {
-                OutputDir.Text = dialog.FolderName;
+                AddRecentOutputDirectory(directory);
+
+                // Select the directory after the ComboBox has been populated.
+                OutputDir.SelectedItem = directory;
+                return;
+            }
+
+            OutputDir.SelectedItem = directory;
+        }
+
+        /// <summary>
+        /// Adds a directory to the recent output history, moving existing entries
+        /// to the top and keeping the history limited to the configured maximum.
+        /// </summary>
+        private void AddRecentOutputDirectory(string directory)
+        {
+            var directories = GetRecentOutputDirectories();
+
+            directories.RemoveAll(path =>
+                string.Equals(path, directory, StringComparison.OrdinalIgnoreCase));
+
+            directories.Insert(0, directory);
+
+            if (directories.Count > MaxRecentOutputDirectories)
+            {
+                directories.RemoveRange(
+                    MaxRecentOutputDirectories,
+                    directories.Count - MaxRecentOutputDirectories);
+            }
+
+            SaveRecentOutputDirectories(directories);
+            PopulateRecentOutputDirectories(directories);
+        }
+
+        /// <summary>
+        /// Loads the persisted recent output directories and removes entries
+        /// that no longer exist.
+        /// </summary>
+        private void LoadRecentOutputDirectories()
+        {
+            var directories = GetRecentOutputDirectories()
+                .Where(Directory.Exists)
+                .ToList();
+
+            SaveRecentOutputDirectories(directories);
+            PopulateRecentOutputDirectories(directories);
+
+            if (directories.Count > 0)
+                OutputDir.SelectedItem = directories[0];
+        }
+
+        /// <summary>
+        /// Returns the recent output directories stored in application settings.
+        /// </summary>
+        private static List<string> GetRecentOutputDirectories()
+        {
+            var stored = Properties.Settings.Default.RecentOutputDirectories;
+
+            if (string.IsNullOrWhiteSpace(stored))
+                return [];
+
+            return stored
+                .Split('|', StringSplitOptions.RemoveEmptyEntries)
+                .Where(path => !string.IsNullOrWhiteSpace(path))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(MaxRecentOutputDirectories)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Persists the recent output directories in application settings.
+        /// Windows paths cannot contain the pipe character, so it is safe
+        /// to use it as the separator.
+        /// </summary>
+        private static void SaveRecentOutputDirectories(IEnumerable<string> directories)
+        {
+            Properties.Settings.Default.RecentOutputDirectories =
+                string.Join("|", directories);
+
+            Properties.Settings.Default.Save();
+        }
+
+        /// <summary>
+        /// Refreshes the ComboBox items from the supplied directory history.
+        /// </summary>
+        private void PopulateRecentOutputDirectories(IEnumerable<string> directories)
+        {
+            OutputDir.Items.Clear();
+
+            foreach (var directory in directories)
+            {
+                OutputDir.Items.Add(directory);
+            }
+        }
+
+        /// <summary>
+        /// Handles manual selection from the recent-directory dropdown.
+        /// The selected directory becomes the active output directory and is
+        /// moved to the top of the history.
+        /// </summary>
+        private void OutputDir_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (OutputDir.SelectedItem is not string directory)
+                return;
+
+            var directories = GetRecentOutputDirectories();
+
+            // The selected directory is already part of the history.
+            // Move it to the top without rebuilding the ComboBox.
+            directories.RemoveAll(path =>
+                string.Equals(path, directory, StringComparison.OrdinalIgnoreCase));
+
+            directories.Insert(0, directory);
+
+            SaveRecentOutputDirectories(directories);
+
+            if (OutputDir.Items.Count > 0 &&
+                !string.Equals(OutputDir.Items[0] as string, directory, StringComparison.OrdinalIgnoreCase))
+            {
+                PopulateRecentOutputDirectories(directories);
+                OutputDir.SelectedItem = directory;
             }
         }
 
