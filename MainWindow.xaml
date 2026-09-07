@@ -7,10 +7,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         Title="Az Video Downloader"
-        Height="760"
-        Width="1200"
-        MinHeight="620"
-        MinWidth="980"
+        Height="800"
+        Width="1280"
+        MinHeight="800"
+        MinWidth="1280"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource MaterialDesignPaper}"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
@@ -240,7 +240,7 @@
                             Style="{StaticResource PrimaryButton}"
                             Margin="0,18,0,0"
                             Click="DownloadButton_Click"
-                            Height="40"/>
+                            Height="50"/>
                 </Grid>
             </materialDesign:Card>
 

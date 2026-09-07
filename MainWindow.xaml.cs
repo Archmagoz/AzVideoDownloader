@@ -39,7 +39,7 @@ namespace AzVideoDownloader
         // regular video download. Kept in sync with the ComboBoxItems
         // declared in MainWindow.xaml so the designer preview matches the
         // runtime default state.
-        private static readonly string[] VideoContainerExtensions = { "mp4", "mkv", "mov", "webm" };
+        private static readonly string[] VideoContainerExtensions = YtDlpVideoFormats.UiSelectableLabels;
 
         // Container extensions offered by ChangeExtensionComboBox once
         // "Somente áudio" is checked. Sourced from YtDlpAudioFormats so this
