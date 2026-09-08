@@ -5,6 +5,7 @@ using System.Windows.Controls;
 
 using YoutubeDLSharp;
 
+using AzVideoDownloader.Services;
 using AzVideoDownloader.Services.Fetch;
 using AzVideoDownloader.Services.Core;
 using AzVideoDownloader.Services.Models;
@@ -47,8 +48,31 @@ namespace AzVideoDownloader
         // never drift apart.
         private static readonly string[] AudioContainerExtensions = YtDlpAudioFormats.UiSelectableLabels;
 
+        // ------------------------------------------------------------
+        //  USER NOTIFICATIONS
+        // ------------------------------------------------------------
+
+        /// <summary>
+        /// Displays a message box when user popups are enabled in the application settings.
+        /// </summary>
+        private static void ShowPopup(
+            string message,
+            string title,
+            MessageBoxButton buttons,
+            MessageBoxImage image)
+        {
+            if (!Properties.Settings.Default.ShowPopups)
+                return;
+
+            MessageBox.Show(message, title, buttons, image);
+        }
+
         public MainWindow()
         {
+            ThemeManager.ApplyTheme(
+                Enum.Parse<ThemeManager.ThemeMode>(
+                    Properties.Settings.Default.ThemeMode));
+
             InitializeComponent();
             LoadRecentOutputDirectories();
 
@@ -58,7 +82,7 @@ namespace AzVideoDownloader
             }
             catch (FileNotFoundException ex)
             {
-                MessageBox.Show(ex.Message, "Az Video Downloader",
+                ShowPopup(ex.Message, "Az Video Downloader",
                     MessageBoxButton.OK, MessageBoxImage.Error);
                 Application.Current.Shutdown();
                 return;
@@ -543,6 +567,19 @@ namespace AzVideoDownloader
         }
 
         // ------------------------------------------------------------
+        //  SETTINGS WINDOW
+        // ------------------------------------------------------------
+        private void SettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            var settingsWindow = new SettingsWindow
+            {
+                Owner = this
+            };
+
+            settingsWindow.ShowDialog();
+        }
+
+        // ------------------------------------------------------------
         //  DOWNLOAD ACTION
         // ------------------------------------------------------------
 
@@ -550,7 +587,7 @@ namespace AzVideoDownloader
         {
             if (string.IsNullOrWhiteSpace(InputLink.Text))
             {
-                MessageBox.Show(
+                ShowPopup(
                     "Cole o link do vídeo antes de continuar.",
                     "Az Video Downloader",
                     MessageBoxButton.OK,
@@ -561,7 +598,7 @@ namespace AzVideoDownloader
 
             if (string.IsNullOrWhiteSpace(OutputDir.Text))
             {
-                MessageBox.Show(
+                ShowPopup(
                     "Selecione a pasta de saída antes de continuar.",
                     "Az Video Downloader",
                     MessageBoxButton.OK,
@@ -585,7 +622,7 @@ namespace AzVideoDownloader
 
             if (selectedVideo is null && !isAudioOnly && hasVideoFormatsAvailable)
             {
-                MessageBox.Show(
+                ShowPopup(
                     "Selecione um formato de vídeo antes de continuar.",
                     "Az Video Downloader",
                     MessageBoxButton.OK,
@@ -675,7 +712,7 @@ namespace AzVideoDownloader
                         ? string.Join(Environment.NewLine, result.ErrorOutput)
                         : "O download falhou.";
 
-                    MessageBox.Show(
+                    ShowPopup(
                         error,
                         "Az Video Downloader",
                         MessageBoxButton.OK,
@@ -687,7 +724,7 @@ namespace AzVideoDownloader
                 DownloadProgressBar.Value = 100;
                 ProgressPercentText.Text = "100%";
 
-                MessageBox.Show(
+                ShowPopup(
                     "Download concluído com sucesso.",
                     "Az Video Downloader",
                     MessageBoxButton.OK,
@@ -701,7 +738,7 @@ namespace AzVideoDownloader
             {
                 ProgressPercentText.Text = "Erro";
 
-                MessageBox.Show(
+                ShowPopup(
                     ex.Message,
                     "Az Video Downloader",
                     MessageBoxButton.OK,

@@ -34,5 +34,29 @@ namespace AzVideoDownloader.Properties {
                 this["RecentOutputDirectories"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("System")]
+        public string ThemeMode {
+            get {
+                return ((string)(this["ThemeMode"]));
+            }
+            set {
+                this["ThemeMode"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool ShowPopups {
+            get {
+                return ((bool)(this["ShowPopups"]));
+            }
+            set {
+                this["ShowPopups"] = value;
+            }
+        }
     }
 }

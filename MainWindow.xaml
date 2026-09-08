@@ -24,16 +24,16 @@
         </Grid.RowDefinitions>
 
         <!-- ==================================================== -->
-        <!--  TOP BAR: Link input + Output directory picker       -->
+        <!--  TOP BAR: Link input + Theme toggle + Output picker  -->
         <!-- ==================================================== -->
         <materialDesign:Card Style="{StaticResource AppCard}"
                              Grid.Row="0"
                              Margin="0,0,0,16">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition/>
-                    <ColumnDefinition Width="20"/>
-                    <ColumnDefinition/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="64"/>
+                    <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- Video URL input -->
@@ -57,6 +57,20 @@
                                                  Height="18"/>
                     </Button>
                 </Grid>
+
+                <!-- Settings button -->
+                <Button x:Name="SettingsButton"
+                        Grid.Column="1"
+                        Style="{StaticResource MaterialDesignFloatingActionButton}"
+                        ToolTip="Configurações"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Click="SettingsButton_Click" Width="40" Height="40">
+
+                    <materialDesign:PackIcon Kind="Cog"
+                                             Width="18"
+                                             Height="18"/>
+                </Button>
 
                 <!-- Output directory picker and recent directory history -->
                 <Grid Grid.Column="2"

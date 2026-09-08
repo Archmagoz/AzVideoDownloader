@@ -9,9 +9,11 @@ namespace AzVideoDownloader.Services.Models
     public sealed class VideoInfoResult
     {
         public string Title { get; init; } = "—";
+
         public double? DurationSeconds { get; init; }
         public string? ThumbnailUrl { get; init; }
-        public List<GetAVFormatList> VideoFormats { get; init; } = new();
-        public List<GetAVFormatList> AudioFormats { get; init; } = new();
+
+        public List<GetAVFormatList> VideoFormats { get; init; } = [];
+        public List<GetAVFormatList> AudioFormats { get; init; } = [];
     }
 }
