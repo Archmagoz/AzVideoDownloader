@@ -37,7 +37,7 @@ namespace AzVideoDownloader.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("System")]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string ThemeMode {
             get {
                 return ((string)(this["ThemeMode"]));

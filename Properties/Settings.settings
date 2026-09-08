@@ -6,7 +6,7 @@
       <Value Profile="(Default)" />
     </Setting>
     <Setting Name="ThemeMode" Type="System.String" Scope="User">
-      <Value Profile="(Default)">System</Value>
+      <Value Profile="(Default)" />
     </Setting>
     <Setting Name="ShowPopups" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
