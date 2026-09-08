@@ -1,0 +1,91 @@
+﻿<Window x:Class="AzVideoDownloader.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="Configurações"
+        Width="500"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{DynamicResource MaterialDesignPaper}"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}" Height="300">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Appearance -->
+        <TextBlock Grid.Row="0"
+                   Text="APARÊNCIA"
+                   Style="{StaticResource AppHeading2}"
+                   Margin="0,0,0,12"/>
+
+        <materialDesign:Card Grid.Row="1"
+                             Padding="16"
+                             Margin="0,0,0,24">
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel>
+                    <TextBlock Text="Tema escuro"
+                               Style="{StaticResource AppBodyText}"/>
+
+                    <TextBlock Text="Usar o modo escuro na interface"
+                               Style="{StaticResource AppCaptionText}"
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <ToggleButton x:Name="DarkModeToggle"
+                              Grid.Column="1"
+                              VerticalAlignment="Center"
+                              Checked="DarkModeToggle_Checked"
+                              Unchecked="DarkModeToggle_Unchecked"/>
+            </Grid>
+        </materialDesign:Card>
+
+        <!-- Notifications -->
+        <StackPanel Grid.Row="2">
+
+            <TextBlock Text="COMPORTAMENTO"
+                       Style="{StaticResource AppHeading2}"
+                       Margin="0,0,0,12"/>
+
+            <materialDesign:Card Padding="16">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Text="Exibir popups"
+                                   Style="{StaticResource AppBodyText}"/>
+
+                        <TextBlock Text="Mostrar notificações e mensagens do programa"
+                                   Style="{StaticResource AppCaptionText}"
+                                   Margin="0,4,0,0"/>
+                    </StackPanel>
+
+                    <ToggleButton x:Name="PopupsToggle"
+                                  Grid.Column="1"
+                                  VerticalAlignment="Center"
+                                  Checked="PopupsToggle_Changed"
+                                  Unchecked="PopupsToggle_Changed" />
+                </Grid>
+            </materialDesign:Card>
+
+            <Button Content="FECHAR"
+                    HorizontalAlignment="Right"
+                    Margin="0,24,0,0"
+                    Padding="24,10"
+                    Click="CloseButton_Click" Height="40" Width="100"/>
+        </StackPanel>
+    </Grid>
+</Window>

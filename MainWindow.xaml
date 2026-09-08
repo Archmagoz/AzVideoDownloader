@@ -7,10 +7,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         Title="Az Video Downloader"
-        Height="760"
-        Width="1200"
-        MinHeight="620"
-        MinWidth="980"
+        Height="800"
+        Width="1280"
+        MinHeight="800"
+        MinWidth="1280"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource MaterialDesignPaper}"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
@@ -24,16 +24,16 @@
         </Grid.RowDefinitions>
 
         <!-- ==================================================== -->
-        <!--  TOP BAR: Link input + Output directory picker       -->
+        <!--  TOP BAR: Link input + Theme toggle + Output picker  -->
         <!-- ==================================================== -->
         <materialDesign:Card Style="{StaticResource AppCard}"
                              Grid.Row="0"
                              Margin="0,0,0,16">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition/>
-                    <ColumnDefinition Width="20"/>
-                    <ColumnDefinition/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="64"/>
+                    <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- Video URL input -->
@@ -58,15 +58,30 @@
                     </Button>
                 </Grid>
 
-                <!-- Output directory picker -->
+                <!-- Settings button -->
+                <Button x:Name="SettingsButton"
+                        Grid.Column="1"
+                        Style="{StaticResource MaterialDesignFloatingActionButton}"
+                        ToolTip="Configurações"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Click="SettingsButton_Click" Width="40" Height="40">
+
+                    <materialDesign:PackIcon Kind="Cog"
+                                             Width="18"
+                                             Height="18"/>
+                </Button>
+
+                <!-- Output directory picker and recent directory history -->
                 <Grid Grid.Column="2"
                       Margin="0,0,-8,0">
-                    <TextBox x:Name="OutputDir"
-                             Style="{StaticResource AppTextBox}"
-                             IsReadOnly="True"
-                             materialDesign:HintAssist.Hint="Pasta de saída"
-                             materialDesign:TextFieldAssist.PrefixText="📁"
-                             Margin="0,0,52,0"/>
+                    <ComboBox x:Name="OutputDir"
+                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                              IsEditable="False"
+                              materialDesign:HintAssist.Hint="Pasta de saída"
+                              materialDesign:TextFieldAssist.PrefixText="📁"
+                              Margin="0,0,52,0"
+                              SelectionChanged="OutputDir_SelectionChanged"/>
 
                     <!-- Folder browser, half inside / half outside the field -->
                     <Button x:Name="BrowseOutputButton"
@@ -240,7 +255,7 @@
                             Style="{StaticResource PrimaryButton}"
                             Margin="0,18,0,0"
                             Click="DownloadButton_Click"
-                            Height="40"/>
+                            Height="50"/>
                 </Grid>
             </materialDesign:Card>
 

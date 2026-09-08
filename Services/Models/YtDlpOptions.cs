@@ -79,24 +79,14 @@ namespace AzVideoDownloader.Services.Models
     public static class YtDlpAudioFormats
     {
         /// <summary>
-        /// UI label -> yt-dlp --audio-format value. yt-dlp doesn't have a
-        /// literal "ogg" format: asking for the vorbis codec is what
-        /// produces a .ogg file, so "ogg" is aliased to "vorbis" here.
+        /// yt-dlp doesn't have a literal "ogg" format: asking for the
+        /// vorbis codec is what produces a .ogg file, so "ogg" is the only
+        /// UI label that needs aliasing before reaching --audio-format.
+        /// Every other supported label already matches yt-dlp's own value
+        /// (case aside), so no full lookup table is needed.
         /// </summary>
-        private static readonly Dictionary<string, string> UiLabelToYtDlpFormat =
-            new(StringComparer.OrdinalIgnoreCase)
-            {
-                ["best"] = "best",
-                ["aac"] = "aac",
-                ["alac"] = "alac",
-                ["flac"] = "flac",
-                ["m4a"] = "m4a",
-                ["mp3"] = "mp3",
-                ["opus"] = "opus",
-                ["wav"] = "wav",
-                ["ogg"] = "vorbis",
-                ["vorbis"] = "vorbis",
-            };
+        private const string OggUiLabel = "ogg";
+        private const string OggYtDlpFormat = "vorbis";
 
         /// <summary>
         /// The list to feed ChangeExtensionComboBox / an audio-format combo
@@ -104,7 +94,7 @@ namespace AzVideoDownloader.Services.Models
         /// popularity-based default; reorder freely.
         /// </summary>
         public static readonly string[] UiSelectableLabels =
-            { "mp3", "m4a", "opus", "ogg", "flac", "wav", "aac" };
+            ["mp3", "m4a", "opus", "ogg", "flac", "wav", "aac"];
 
         /// <summary>
         /// Audio formats whose container doesn't reliably support an
@@ -121,12 +111,42 @@ namespace AzVideoDownloader.Services.Models
                 return "best";
             }
 
-            return UiLabelToYtDlpFormat.TryGetValue(uiLabel, out var mapped)
-                ? mapped
+            return uiLabel.Equals(OggUiLabel, StringComparison.OrdinalIgnoreCase)
+                ? OggYtDlpFormat
                 : uiLabel.ToLowerInvariant();
         }
 
         public static bool SupportsEmbeddedThumbnail(string uiLabel) =>
             !ThumbnailIncompatible.Contains(uiLabel);
+    }
+
+    /// <summary>
+    /// UI-facing video container labels, consumed by the "Alterar extensão
+    /// de saída" combo when AudioOnly is unchecked. Unlike
+    /// <see cref="YtDlpAudioFormats"/>, there's no label-to-yt-dlp-value
+    /// mapping needed here: <see cref="YtDlpOptions.TargetContainer"/> is
+    /// already the raw value yt-dlp expects for both --remux-video and the
+    /// merge format (parsed into <c>DownloadMergeFormat</c> downstream in
+    /// VideoDownloadService.ToMergeFormat).
+    /// </summary>
+    public static class YtDlpVideoFormats
+    {
+        /// <summary>
+        /// The list to feed ChangeExtensionComboBox / a container combo
+        /// when the UI is in video mode. Order is just a sensible
+        /// popularity-based default; reorder freely.
+        /// </summary>
+        public static readonly string[] UiSelectableLabels =
+            ["mp4", "mkv", "mov", "webm"];
+
+        /// <summary>
+        /// Guards against a stale/typo'd container value reaching yt-dlp
+        /// (e.g. a leftover setting from a previous app version, or manual
+        /// tampering with a saved profile). Callers should fall back to a
+        /// safe default such as "mp4" when this returns false.
+        /// </summary>
+        public static bool IsValid(string containerExtension) =>
+            !string.IsNullOrWhiteSpace(containerExtension)
+                && UiSelectableLabels.Contains(containerExtension, StringComparer.OrdinalIgnoreCase);
     }
 }

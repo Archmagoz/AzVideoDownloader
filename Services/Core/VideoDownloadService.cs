@@ -7,24 +7,14 @@ using AzVideoDownloader.Services.Models;
 namespace AzVideoDownloader.Services.Core
 {
     /// <summary>
-    /// Downloads a video using the selected video/audio formats and
+    /// Downloads videos using the selected video/audio formats and
     /// reports download progress to the caller.
-    ///
-    /// CHANGED: this used to build a raw ffmpeg-flavoured format selector
-    /// and rely on a manual "-vn" for audio-only. It now delegates to
-    /// YoutubeDLSharp's dedicated RunAudioDownload(...) for the "Somente
-    /// áudio" path, which is what actually issues yt-dlp's "-x"/
-    /// "--audio-format" under the hood - see YtDlpArgumentBuilderService /
-    /// YtDlpOptions for the reasoning.
     /// </summary>
-    public class VideoDownloadService
+    public class VideoDownloadService(YoutubeDL ytdl)
     {
-        private readonly YoutubeDL _ytdl;
+        private const string DefaultFormatSelector = "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]";
 
-        public VideoDownloadService(YoutubeDL ytdl)
-        {
-            _ytdl = ytdl;
-        }
+        private readonly YoutubeDL _ytdl = ytdl;
 
         public async Task<RunResult<string>> DownloadAsync(
             string url,
@@ -53,6 +43,7 @@ namespace AzVideoDownloader.Services.Core
             }
 
             var format = BuildVideoFormatSelector(video, audio, options);
+
             var mergeFormat = options.MergeAudioVideo
                 ? ToMergeFormat(options.EffectiveContainer)
                 : default;
@@ -67,135 +58,145 @@ namespace AzVideoDownloader.Services.Core
         }
 
         /// <summary>
-        /// Fallback yt-dlp format selector used when the format list
-        /// returned no video/audio to pick from (e.g. site without
-        /// per-format listing support, or the list came back empty).
-        /// Prefers a separate mp4 video + m4a audio pair (so they can be
-        /// merged without a re-encode), falling back to a single combined
-        /// mp4 stream if that pairing isn't available.
-        /// </summary>
-        private const string DefaultFormatSelector = "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]";
-
-        /// <summary>
-        /// Builds the yt-dlp format selector from the selected video/audio
-        /// formats. Unrelated to audio-only downloads - those go through
-        /// RunAudioDownload above instead.
+        /// Builds the yt-dlp format selector from the selected video/audio formats.
+        /// When the audio list is unavailable, the selected video is preserved and
+        /// yt-dlp is allowed to select the best available audio stream.
         /// </summary>
         private static string BuildVideoFormatSelector(
             GetAVFormatList? video,
             GetAVFormatList? audio,
             YtDlpOptions options)
         {
-            // No video to work with at all - fall back.
-            // Also fall back when merge is requested but there's no audio
-            // format to merge with (video-only stream + MergeAudioVideo
-            // would otherwise silently ship without audio).
-            if (video is null || (options.MergeAudioVideo && audio is null))
+            // No video was selected. Use the default fallback selector.
+            if (video is null)
                 return DefaultFormatSelector;
 
+            // Download only the selected video format.
             if (!options.MergeAudioVideo)
                 return video.Source.FormatId;
 
-            return $"{video.Source.FormatId}+{audio!.Source.FormatId}";
+            // Both video and audio formats were explicitly selected.
+            if (audio is not null)
+                return $"{video.Source.FormatId}+{audio.Source.FormatId}";
+
+            // The audio format list was unavailable or empty.
+            // Preserve the selected video and let yt-dlp choose the best audio.
+            return $"{video.Source.FormatId}+ba";
         }
 
         /// <summary>
-        /// Maps our UI-facing audio format label to YoutubeDLSharp's
-        /// AudioConversionFormat enum, which mirrors yt-dlp's own
-        /// --audio-format values (best, aac, alac, flac, m4a, mp3, opus,
-        /// vorbis, wav). Uses Enum.TryParse instead of a hardcoded switch
-        /// so this compiles regardless of exactly which members the
-        /// installed YoutubeDLSharp version's enum has - if a given format
-        /// name isn't a real member, it just falls back to the enum's
-        /// default (index 0) value rather than failing to build.
-        ///
-        /// "ogg" is aliased to "vorbis" by YtDlpAudioFormats.ToAudioFormatArg
-        /// before it gets here, same as in the raw CLI builder, since
-        /// yt-dlp/ffmpeg produce a .ogg file when asked for the vorbis codec.
+        /// Maps the UI audio format to YoutubeDLSharp's AudioConversionFormat enum.
+        /// Falls back to the enum default when the requested format is not available
+        /// in the installed YoutubeDLSharp version.
         /// </summary>
         private static AudioConversionFormat ToAudioConversionFormat(string uiLabel)
         {
             var mapped = YtDlpAudioFormats.ToAudioFormatArg(uiLabel);
             var pascalCase = char.ToUpperInvariant(mapped[0]) + mapped[1..];
 
-            return Enum.TryParse<AudioConversionFormat>(pascalCase, ignoreCase: true, out var parsed)
+            return Enum.TryParse<AudioConversionFormat>(
+                pascalCase,
+                ignoreCase: true,
+                out var parsed)
                 ? parsed
                 : default;
         }
 
         /// <summary>
-        /// Same reasoning as <see cref="ToAudioConversionFormat"/>, but for
-        /// the video merge container (mp4/mkv/webm/...).
+        /// Maps the target container extension to YoutubeDLSharp's
+        /// DownloadMergeFormat enum.
         /// </summary>
         private static DownloadMergeFormat ToMergeFormat(string containerExtension)
         {
             if (string.IsNullOrWhiteSpace(containerExtension))
                 return default;
 
-            var pascalCase = char.ToUpperInvariant(containerExtension[0]) + containerExtension[1..].ToLowerInvariant();
+            var pascalCase =
+                char.ToUpperInvariant(containerExtension[0]) +
+                containerExtension[1..].ToLowerInvariant();
 
-            return Enum.TryParse<DownloadMergeFormat>(pascalCase, ignoreCase: true, out var parsed)
+            return Enum.TryParse<DownloadMergeFormat>(
+                pascalCase,
+                ignoreCase: true,
+                out var parsed)
                 ? parsed
                 : default;
         }
 
         /// <summary>
-        /// Builds the OptionSet passed as overrideOptions, layering the
-        /// postprocessing flags (thumbnail/metadata/subs/remux) on top of
-        /// whatever ToolManagerService already sets up (cookies, user-agent,
-        /// etc).
-        ///
-        /// NOTE: property names below (EmbedThumbnail, EmbedMetadata,
-        /// WriteSubs, EmbedSubs, SubLangs, RemuxVideo) follow YoutubeDLSharp's
-        /// documented convention of mirroring yt-dlp's long CLI flag names
-        /// in PascalCase (--embed-thumbnail -> EmbedThumbnail, etc). If any
-        /// of these don't match your installed package version, IntelliSense
-        /// on "overrideOptions." will show the real name to swap in.
-        ///
-        /// CHANGED: ToolManagerService.CreateYouTubeOverrideOptions() (which
-        /// sets --js-runtimes/--extractor-args, both YouTube-extractor
-        /// specific) is only layered in when the target URL is actually a
-        /// YouTube URL. For any other site we start from a plain OptionSet
-        /// so yt-dlp doesn't get YouTube-only extractor args on unrelated
-        /// sites.
+        /// Builds the yt-dlp options used for the current download.
+        /// YouTube-specific extractor options are only applied to YouTube URLs.
         /// </summary>
-        private static OptionSet BuildOverrideOptions(YtDlpOptions options, string url)
+        private static OptionSet BuildOverrideOptions(
+            YtDlpOptions options,
+            string url)
         {
             var overrideOptions = IsYouTubeUrl(url)
                 ? ToolManagerService.CreateYouTubeOverrideOptions()
                 : new OptionSet();
 
-            overrideOptions.EmbedThumbnail = options.EmbedThumbnail
-                && (!options.AudioOnly || YtDlpAudioFormats.SupportsEmbeddedThumbnail(options.AudioFormat));
-
-            overrideOptions.EmbedMetadata = options.EmbedMetadata;
-
-            if (options.EmbedSubtitles && !options.AudioOnly)
-            {
-                overrideOptions.WriteSubs = true;
-                overrideOptions.EmbedSubs = true;
-                overrideOptions.SubLangs = string.IsNullOrWhiteSpace(options.SubtitleLangs)
-                    ? "all"
-                    : options.SubtitleLangs;
-            }
-
-            // Remux-only path: a single video format, container changed,
-            // but not merging with a separate audio track (that case is
-            // instead handled by mergeFormat in DownloadAsync above).
-            if (!options.AudioOnly && options.ChangeExtension && !options.MergeAudioVideo)
-            {
-                overrideOptions.RemuxVideo = options.TargetContainer;
-            }
+            ConfigurePostProcessingOptions(overrideOptions, options);
 
             return overrideOptions;
         }
 
         /// <summary>
-        /// Detects whether the target URL is a YouTube URL (youtube.com,
-        /// youtu.be, m.youtube.com, music.youtube.com, etc). Used to decide
-        /// whether ToolManagerService.CreateYouTubeOverrideOptions()
-        /// (--js-runtimes/--extractor-args) should be applied - those flags
-        /// only make sense against the YouTube extractor.
+        /// Applies thumbnail, metadata, subtitle and container options
+        /// to the yt-dlp option set.
+        /// </summary>
+        private static void ConfigurePostProcessingOptions(
+            OptionSet overrideOptions,
+            YtDlpOptions options)
+        {
+            overrideOptions.EmbedThumbnail =
+                options.EmbedThumbnail &&
+                (!options.AudioOnly ||
+                 YtDlpAudioFormats.SupportsEmbeddedThumbnail(options.AudioFormat));
+
+            overrideOptions.EmbedMetadata = options.EmbedMetadata;
+
+            ConfigureSubtitleOptions(overrideOptions, options);
+            ConfigureRemuxOptions(overrideOptions, options);
+        }
+
+        /// <summary>
+        /// Configures subtitle writing and embedding for video downloads.
+        /// </summary>
+        private static void ConfigureSubtitleOptions(
+            OptionSet overrideOptions,
+            YtDlpOptions options)
+        {
+            if (options.AudioOnly || !options.EmbedSubtitles)
+                return;
+
+            overrideOptions.WriteSubs = true;
+            overrideOptions.EmbedSubs = true;
+            overrideOptions.SubLangs =
+                string.IsNullOrWhiteSpace(options.SubtitleLangs)
+                    ? "all"
+                    : options.SubtitleLangs;
+        }
+
+        /// <summary>
+        /// Configures remuxing when the output container is changed without
+        /// merging a separate audio stream.
+        /// </summary>
+        private static void ConfigureRemuxOptions(
+            OptionSet overrideOptions,
+            YtDlpOptions options)
+        {
+            if (options.AudioOnly ||
+                !options.ChangeExtension ||
+                options.MergeAudioVideo)
+            {
+                return;
+            }
+
+            overrideOptions.RemuxVideo = options.TargetContainer;
+        }
+
+        /// <summary>
+        /// Determines whether the URL belongs to YouTube.
         /// </summary>
         private static bool IsYouTubeUrl(string url)
         {

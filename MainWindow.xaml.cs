@@ -5,6 +5,7 @@ using System.Windows.Controls;
 
 using YoutubeDLSharp;
 
+using AzVideoDownloader.Services;
 using AzVideoDownloader.Services.Fetch;
 using AzVideoDownloader.Services.Core;
 using AzVideoDownloader.Services.Models;
@@ -39,7 +40,7 @@ namespace AzVideoDownloader
         // regular video download. Kept in sync with the ComboBoxItems
         // declared in MainWindow.xaml so the designer preview matches the
         // runtime default state.
-        private static readonly string[] VideoContainerExtensions = { "mp4", "mkv", "mov", "webm" };
+        private static readonly string[] VideoContainerExtensions = YtDlpVideoFormats.UiSelectableLabels;
 
         // Container extensions offered by ChangeExtensionComboBox once
         // "Somente áudio" is checked. Sourced from YtDlpAudioFormats so this
@@ -47,9 +48,33 @@ namespace AzVideoDownloader
         // never drift apart.
         private static readonly string[] AudioContainerExtensions = YtDlpAudioFormats.UiSelectableLabels;
 
+        // ------------------------------------------------------------
+        //  USER NOTIFICATIONS
+        // ------------------------------------------------------------
+
+        /// <summary>
+        /// Displays a message box when user popups are enabled in the application settings.
+        /// </summary>
+        private static void ShowPopup(
+            string message,
+            string title,
+            MessageBoxButton buttons,
+            MessageBoxImage image)
+        {
+            if (!Properties.Settings.Default.ShowPopups)
+                return;
+
+            MessageBox.Show(message, title, buttons, image);
+        }
+
         public MainWindow()
         {
+            ThemeManager.ApplyTheme(
+                Enum.Parse<ThemeManager.ThemeMode>(
+                    Properties.Settings.Default.ThemeMode));
+
             InitializeComponent();
+            LoadRecentOutputDirectories();
 
             try
             {
@@ -57,7 +82,7 @@ namespace AzVideoDownloader
             }
             catch (FileNotFoundException ex)
             {
-                MessageBox.Show(ex.Message, "Az Video Downloader",
+                ShowPopup(ex.Message, "Az Video Downloader",
                     MessageBoxButton.OK, MessageBoxImage.Error);
                 Application.Current.Shutdown();
                 return;
@@ -387,6 +412,11 @@ namespace AzVideoDownloader
         //  OUTPUT FOLDER
         // ------------------------------------------------------------
 
+        private const int MaxRecentOutputDirectories = 5;
+
+        /// <summary>
+        /// Opens the folder browser and sets the selected output directory.
+        /// </summary>
         private void BrowseOutputButton_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new OpenFolderDialog
@@ -395,10 +425,158 @@ namespace AzVideoDownloader
                 Multiselect = false
             };
 
-            if (dialog.ShowDialog() == true)
+            if (dialog.ShowDialog() != true)
+                return;
+
+            SetOutputDirectory(dialog.FolderName, addToHistory: true);
+        }
+
+        /// <summary>
+        /// Sets the active output directory and optionally updates the recent
+        /// directory history.
+        /// </summary>
+        private void SetOutputDirectory(string directory, bool addToHistory)
+        {
+            if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
+                return;
+
+            if (addToHistory)
             {
-                OutputDir.Text = dialog.FolderName;
+                AddRecentOutputDirectory(directory);
+
+                // Select the directory after the ComboBox has been populated.
+                OutputDir.SelectedItem = directory;
+                return;
             }
+
+            OutputDir.SelectedItem = directory;
+        }
+
+        /// <summary>
+        /// Adds a directory to the recent output history, moving existing entries
+        /// to the top and keeping the history limited to the configured maximum.
+        /// </summary>
+        private void AddRecentOutputDirectory(string directory)
+        {
+            var directories = GetRecentOutputDirectories();
+
+            directories.RemoveAll(path =>
+                string.Equals(path, directory, StringComparison.OrdinalIgnoreCase));
+
+            directories.Insert(0, directory);
+
+            if (directories.Count > MaxRecentOutputDirectories)
+            {
+                directories.RemoveRange(
+                    MaxRecentOutputDirectories,
+                    directories.Count - MaxRecentOutputDirectories);
+            }
+
+            SaveRecentOutputDirectories(directories);
+            PopulateRecentOutputDirectories(directories);
+        }
+
+        /// <summary>
+        /// Loads the persisted recent output directories and removes entries
+        /// that no longer exist.
+        /// </summary>
+        private void LoadRecentOutputDirectories()
+        {
+            var directories = GetRecentOutputDirectories()
+                .Where(Directory.Exists)
+                .ToList();
+
+            SaveRecentOutputDirectories(directories);
+            PopulateRecentOutputDirectories(directories);
+
+            if (directories.Count > 0)
+                OutputDir.SelectedItem = directories[0];
+        }
+
+        /// <summary>
+        /// Returns the recent output directories stored in application settings.
+        /// </summary>
+        private static List<string> GetRecentOutputDirectories()
+        {
+            var stored = Properties.Settings.Default.RecentOutputDirectories;
+
+            if (string.IsNullOrWhiteSpace(stored))
+                return [];
+
+            return stored
+                .Split('|', StringSplitOptions.RemoveEmptyEntries)
+                .Where(path => !string.IsNullOrWhiteSpace(path))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(MaxRecentOutputDirectories)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Persists the recent output directories in application settings.
+        /// Windows paths cannot contain the pipe character, so it is safe
+        /// to use it as the separator.
+        /// </summary>
+        private static void SaveRecentOutputDirectories(IEnumerable<string> directories)
+        {
+            Properties.Settings.Default.RecentOutputDirectories =
+                string.Join("|", directories);
+
+            Properties.Settings.Default.Save();
+        }
+
+        /// <summary>
+        /// Refreshes the ComboBox items from the supplied directory history.
+        /// </summary>
+        private void PopulateRecentOutputDirectories(IEnumerable<string> directories)
+        {
+            OutputDir.Items.Clear();
+
+            foreach (var directory in directories)
+            {
+                OutputDir.Items.Add(directory);
+            }
+        }
+
+        /// <summary>
+        /// Handles manual selection from the recent-directory dropdown.
+        /// The selected directory becomes the active output directory and is
+        /// moved to the top of the history.
+        /// </summary>
+        private void OutputDir_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (OutputDir.SelectedItem is not string directory)
+                return;
+
+            var directories = GetRecentOutputDirectories();
+
+            // The selected directory is already part of the history.
+            // Move it to the top without rebuilding the ComboBox.
+            directories.RemoveAll(path =>
+                string.Equals(path, directory, StringComparison.OrdinalIgnoreCase));
+
+            directories.Insert(0, directory);
+
+            SaveRecentOutputDirectories(directories);
+
+            if (OutputDir.Items.Count > 0 &&
+                !string.Equals(OutputDir.Items[0] as string, directory, StringComparison.OrdinalIgnoreCase))
+            {
+                PopulateRecentOutputDirectories(directories);
+                OutputDir.SelectedItem = directory;
+            }
+        }
+
+        // ------------------------------------------------------------
+        //  SETTINGS WINDOW
+        // ------------------------------------------------------------
+        private void SettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            var settingsWindow = new SettingsWindow
+            {
+                Owner = this
+            };
+
+            settingsWindow.ShowDialog();
         }
 
         // ------------------------------------------------------------
@@ -409,7 +587,7 @@ namespace AzVideoDownloader
         {
             if (string.IsNullOrWhiteSpace(InputLink.Text))
             {
-                MessageBox.Show(
+                ShowPopup(
                     "Cole o link do vídeo antes de continuar.",
                     "Az Video Downloader",
                     MessageBoxButton.OK,
@@ -420,7 +598,7 @@ namespace AzVideoDownloader
 
             if (string.IsNullOrWhiteSpace(OutputDir.Text))
             {
-                MessageBox.Show(
+                ShowPopup(
                     "Selecione a pasta de saída antes de continuar.",
                     "Az Video Downloader",
                     MessageBoxButton.OK,
@@ -444,7 +622,7 @@ namespace AzVideoDownloader
 
             if (selectedVideo is null && !isAudioOnly && hasVideoFormatsAvailable)
             {
-                MessageBox.Show(
+                ShowPopup(
                     "Selecione um formato de vídeo antes de continuar.",
                     "Az Video Downloader",
                     MessageBoxButton.OK,
@@ -534,7 +712,7 @@ namespace AzVideoDownloader
                         ? string.Join(Environment.NewLine, result.ErrorOutput)
                         : "O download falhou.";
 
-                    MessageBox.Show(
+                    ShowPopup(
                         error,
                         "Az Video Downloader",
                         MessageBoxButton.OK,
@@ -546,7 +724,7 @@ namespace AzVideoDownloader
                 DownloadProgressBar.Value = 100;
                 ProgressPercentText.Text = "100%";
 
-                MessageBox.Show(
+                ShowPopup(
                     "Download concluído com sucesso.",
                     "Az Video Downloader",
                     MessageBoxButton.OK,
@@ -560,7 +738,7 @@ namespace AzVideoDownloader
             {
                 ProgressPercentText.Text = "Erro";
 
-                MessageBox.Show(
+                ShowPopup(
                     ex.Message,
                     "Az Video Downloader",
                     MessageBoxButton.OK,
