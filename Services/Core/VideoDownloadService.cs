@@ -12,9 +12,15 @@ namespace AzVideoDownloader.Services.Core
     /// </summary>
     public class VideoDownloadService(YoutubeDL ytdl)
     {
+        #region Fields
+
         private const string DefaultFormatSelector = "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]";
 
         private readonly YoutubeDL _ytdl = ytdl;
+
+        #endregion
+
+        #region Public API
 
         public async Task<RunResult<string>> DownloadAsync(
             string url,
@@ -56,6 +62,10 @@ namespace AzVideoDownloader.Services.Core
                 progress: progress,
                 overrideOptions: overrideOptions);
         }
+
+        #endregion
+
+        #region Format Selection
 
         /// <summary>
         /// Builds the yt-dlp format selector from the selected video/audio formats.
@@ -122,6 +132,10 @@ namespace AzVideoDownloader.Services.Core
                 ? parsed
                 : default;
         }
+
+        #endregion
+
+        #region Option Building
 
         /// <summary>
         /// Builds the yt-dlp options used for the current download.
@@ -195,6 +209,10 @@ namespace AzVideoDownloader.Services.Core
             overrideOptions.RemuxVideo = options.TargetContainer;
         }
 
+        #endregion
+
+        #region URL Helpers
+
         /// <summary>
         /// Determines whether the URL belongs to YouTube.
         /// </summary>
@@ -203,5 +221,7 @@ namespace AzVideoDownloader.Services.Core
             return url.Contains("youtube.com", StringComparison.OrdinalIgnoreCase)
                 || url.Contains("youtu.be", StringComparison.OrdinalIgnoreCase);
         }
+
+        #endregion
     }
 }

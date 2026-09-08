@@ -8,12 +8,20 @@ namespace AzVideoDownloader.Services.Models
     /// </summary>
     public sealed class VideoInfoResult
     {
+        #region Metadata
+
         public string Title { get; init; } = "—";
 
         public double? DurationSeconds { get; init; }
         public string? ThumbnailUrl { get; init; }
 
+        #endregion
+
+        #region Formats
+
         public List<GetAVFormatList> VideoFormats { get; init; } = [];
         public List<GetAVFormatList> AudioFormats { get; init; } = [];
+
+        #endregion
     }
 }

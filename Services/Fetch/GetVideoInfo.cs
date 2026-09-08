@@ -10,14 +10,15 @@ namespace AzVideoDownloader.Services.Fetch
     /// unit tested or reused (e.g. in a batch/playlist feature) without a
     /// WPF window attached.
     /// </summary>
-    public sealed class GetVideoinfo
+    public sealed class GetVideoinfo(YoutubeDL ytdl)
     {
-        private readonly YoutubeDL _ytdl;
+        #region Fields
 
-        public GetVideoinfo(YoutubeDL ytdl)
-        {
-            _ytdl = ytdl;
-        }
+        private readonly YoutubeDL _ytdl = ytdl;
+
+        #endregion
+
+        #region Public API
 
         /// <summary>
         /// Fetches metadata for <paramref name="url"/>. Returns null if
@@ -43,13 +44,33 @@ namespace AzVideoDownloader.Services.Fetch
 
             var info = result.Data;
 
-            var videoFormats = info.Formats
+            return new VideoInfoResult
+            {
+                Title = info.Title ?? "—",
+                DurationSeconds = info.Duration,
+                ThumbnailUrl = info.Thumbnail,
+                VideoFormats = BuildVideoFormats(info.Formats),
+                AudioFormats = BuildAudioFormats(info.Formats)
+            };
+        }
+
+        #endregion
+
+        #region Format Selection
+
+        private static List<GetAVFormatList> BuildVideoFormats(
+            IEnumerable<YoutubeDLSharp.Metadata.FormatData> formats)
+        {
+            return [.. formats
                 .Where(f => f.VideoCodec != "none" && f.VideoCodec != null)
                 .OrderByDescending(f => f.Height ?? 0)
-                .Select(GetAVFormatList.ForVideo)
-                .ToList();
+                .Select(GetAVFormatList.ForVideo)];
+        }
 
-            var audioFormats = info.Formats
+        private static List<GetAVFormatList> BuildAudioFormats(
+            IEnumerable<YoutubeDLSharp.Metadata.FormatData> formats)
+        {
+            return [.. formats
                 .Where(f => f.AudioCodec != "none" && f.AudioCodec != null
                          && (f.VideoCodec == "none" || f.VideoCodec == null))
                 // Sort by bitrate (highest first), same principle as the
@@ -58,17 +79,9 @@ namespace AzVideoDownloader.Services.Fetch
                 // low-bitrate stream happened to come first in yt-dlp's raw
                 // (unsorted-by-quality) format list.
                 .OrderByDescending(f => f.AudioBitrate ?? 0)
-                .Select(GetAVFormatList.ForAudio)
-                .ToList();
-
-            return new VideoInfoResult
-            {
-                Title = info.Title ?? "—",
-                DurationSeconds = info.Duration,
-                ThumbnailUrl = info.Thumbnail,
-                VideoFormats = videoFormats,
-                AudioFormats = audioFormats
-            };
+                .Select(GetAVFormatList.ForAudio)];
         }
+
+        #endregion
     }
 }

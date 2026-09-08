@@ -12,7 +12,13 @@ namespace AzVideoDownloader.Services.Fetch
     /// </summary>
     public sealed class GetVideoThumbnail
     {
+        #region Fields
+
         private static readonly HttpClient _httpClient = new();
+
+        #endregion
+
+        #region Public API
 
         /// <summary>
         /// Returns the decoded image, or null if the URL is empty or the
@@ -43,5 +49,7 @@ namespace AzVideoDownloader.Services.Fetch
                 return null;
             }
         }
+
+        #endregion
     }
 }

@@ -11,8 +11,14 @@ namespace AzVideoDownloader.Services.Helpers
     /// </summary>
     public sealed class DebouncedTriggerHelper
     {
+        #region Fields
+
         private readonly DispatcherTimer _timer;
         private readonly Action _callback;
+
+        #endregion
+
+        #region Constructor
 
         public DebouncedTriggerHelper(TimeSpan delay, Action callback)
         {
@@ -25,6 +31,10 @@ namespace AzVideoDownloader.Services.Helpers
             };
         }
 
+        #endregion
+
+        #region Public API
+
         /// <summary>(Re)starts the countdown. Repeated calls restart it.</summary>
         public void Arm()
         {
@@ -32,14 +42,16 @@ namespace AzVideoDownloader.Services.Helpers
             _timer.Start();
         }
 
-        /// <summary>Cancels a pending countdown without firing the callback.</summary>
-        public void Cancel() => _timer.Stop();
-
         /// <summary>Cancels any pending countdown and fires the callback now.</summary>
         public void TriggerNow()
         {
             _timer.Stop();
             _callback();
         }
+
+        /// <summary>Cancels a pending countdown without firing the callback.</summary>
+        public void Cancel() => _timer.Stop();
+
+        #endregion
     }
 }
