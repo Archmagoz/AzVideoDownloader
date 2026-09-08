@@ -6,12 +6,14 @@ namespace AzVideoDownloader.Services.Models
     /// </summary>
     public sealed class YtDlpOptions
     {
-        // --- Mode -------------------------------------------------------
+        #region Mode
 
         /// <summary>Extract audio only (yt-dlp -x), instead of downloading video.</summary>
         public bool AudioOnly { get; set; }
 
-        // --- Audio-only path ---------------------------------------------
+        #endregion
+
+        #region Audio-Only Path
 
         /// <summary>
         /// UI-facing audio container/extension, e.g. "mp3", "m4a", "opus",
@@ -32,7 +34,9 @@ namespace AzVideoDownloader.Services.Models
         /// </summary>
         public string? AudioQuality { get; set; }
 
-        // --- Video path ----------------------------------------------------
+        #endregion
+
+        #region Video Path
 
         /// <summary>Selected video format id from VideoFormatListBox (e.g. "137").</summary>
         public string? VideoFormatId { get; set; }
@@ -56,7 +60,9 @@ namespace AzVideoDownloader.Services.Models
         public string EffectiveContainer =>
             ChangeExtension ? TargetContainer : SourceContainer;
 
-        // --- Shared postprocessing flags -----------------------------------
+        #endregion
+
+        #region Shared Postprocessing Flags
 
         /// <summary>--embed-thumbnail.</summary>
         public bool EmbedThumbnail { get; set; }
@@ -69,6 +75,8 @@ namespace AzVideoDownloader.Services.Models
 
         /// <summary>--sub-langs value, e.g. "en.*,pt.*". Null/empty means "all".</summary>
         public string? SubtitleLangs { get; set; }
+
+        #endregion
     }
 
     /// <summary>
@@ -78,6 +86,8 @@ namespace AzVideoDownloader.Services.Models
     /// </summary>
     public static class YtDlpAudioFormats
     {
+        #region Constants
+
         /// <summary>
         /// yt-dlp doesn't have a literal "ogg" format: asking for the
         /// vorbis codec is what produces a .ogg file, so "ogg" is the only
@@ -87,6 +97,10 @@ namespace AzVideoDownloader.Services.Models
         /// </summary>
         private const string OggUiLabel = "ogg";
         private const string OggYtDlpFormat = "vorbis";
+
+        #endregion
+
+        #region Lookup Data
 
         /// <summary>
         /// The list to feed ChangeExtensionComboBox / an audio-format combo
@@ -104,6 +118,10 @@ namespace AzVideoDownloader.Services.Models
         private static readonly HashSet<string> ThumbnailIncompatible =
             new(StringComparer.OrdinalIgnoreCase) { "wav" };
 
+        #endregion
+
+        #region Public API
+
         public static string ToAudioFormatArg(string uiLabel)
         {
             if (string.IsNullOrWhiteSpace(uiLabel))
@@ -118,6 +136,8 @@ namespace AzVideoDownloader.Services.Models
 
         public static bool SupportsEmbeddedThumbnail(string uiLabel) =>
             !ThumbnailIncompatible.Contains(uiLabel);
+
+        #endregion
     }
 
     /// <summary>
@@ -131,6 +151,8 @@ namespace AzVideoDownloader.Services.Models
     /// </summary>
     public static class YtDlpVideoFormats
     {
+        #region Lookup Data
+
         /// <summary>
         /// The list to feed ChangeExtensionComboBox / a container combo
         /// when the UI is in video mode. Order is just a sensible
@@ -138,6 +160,10 @@ namespace AzVideoDownloader.Services.Models
         /// </summary>
         public static readonly string[] UiSelectableLabels =
             ["mp4", "mkv", "mov", "webm"];
+
+        #endregion
+
+        #region Public API
 
         /// <summary>
         /// Guards against a stale/typo'd container value reaching yt-dlp
@@ -148,5 +174,7 @@ namespace AzVideoDownloader.Services.Models
         public static bool IsValid(string containerExtension) =>
             !string.IsNullOrWhiteSpace(containerExtension)
                 && UiSelectableLabels.Contains(containerExtension, StringComparer.OrdinalIgnoreCase);
+
+        #endregion
     }
 }
