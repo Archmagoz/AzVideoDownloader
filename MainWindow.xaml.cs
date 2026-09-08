@@ -61,13 +61,7 @@ namespace AzVideoDownloader
 
         public MainWindow()
         {
-            // Apply the theme before InitializeComponent so the designer preview
-            // matches the runtime default state. The user can change the
-            // theme later in SettingsWindow, which will re-apply it to the
-            // running MainWindow instance.
-            ThemeManager.ApplyTheme(
-                Enum.Parse<ThemeManager.ThemeMode>(
-                    Properties.Settings.Default.ThemeMode));
+            ThemeManager.ApplySavedTheme();
 
             InitializeComponent();
             LoadRecentOutputDirectories();

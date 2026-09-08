@@ -6,7 +6,15 @@ namespace AzVideoDownloader
 {
     public partial class SettingsWindow : Window
     {
+        #region Fields
+
+        // Prevents setting changes from being persisted while the controls
+        // are being initialized from the stored application settings.
         private bool _isLoadingSettings;
+
+        #endregion
+
+        #region Constructor
 
         public SettingsWindow()
         {
@@ -14,6 +22,10 @@ namespace AzVideoDownloader
 
             LoadSettings();
         }
+
+        #endregion
+
+        #region Settings
 
         /// <summary>
         /// Loads the persisted application settings and updates the UI.
@@ -24,25 +36,8 @@ namespace AzVideoDownloader
 
             try
             {
-                PopupsToggle.IsChecked =
-                    Properties.Settings.Default.ShowPopups;
-
-                if (Enum.TryParse(
-                        Properties.Settings.Default.ThemeMode,
-                        out ThemeManager.ThemeMode themeMode))
-                {
-                    DarkModeToggle.IsChecked =
-                        themeMode == ThemeManager.ThemeMode.Dark;
-
-                    ThemeManager.ApplyTheme(themeMode);
-                }
-                else
-                {
-                    DarkModeToggle.IsChecked = false;
-
-                    ThemeManager.ApplyTheme(
-                        ThemeManager.ThemeMode.Light);
-                }
+                LoadPopupSetting();
+                LoadThemeSetting();
             }
             finally
             {
@@ -50,6 +45,36 @@ namespace AzVideoDownloader
             }
         }
 
+        /// <summary>
+        /// Loads the persisted popup visibility setting into the UI.
+        /// </summary>
+        private void LoadPopupSetting()
+        {
+            PopupsToggle.IsChecked =
+                Properties.Settings.Default.ShowPopups;
+        }
+
+        /// <summary>
+        /// Loads the persisted theme setting and updates the dark mode toggle.
+        /// </summary>
+        private void LoadThemeSetting()
+        {
+            // Use the resolved theme rather than the persisted ThemeMode
+            // directly. This is important for System mode: when Windows is
+            // currently using dark mode, System resolves to Dark and the
+            // toggle should therefore appear checked.
+            DarkModeToggle.IsChecked =
+                ThemeManager.CurrentThemeMode ==
+                ThemeManager.ThemeMode.Dark;
+        }
+
+        #endregion
+
+        #region Theme
+
+        /// <summary>
+        /// Handles enabling dark mode.
+        /// </summary>
         private void DarkModeToggle_Checked(
             object sender,
             RoutedEventArgs e)
@@ -57,9 +82,13 @@ namespace AzVideoDownloader
             if (_isLoadingSettings)
                 return;
 
-            SetTheme(ThemeManager.ThemeMode.Dark);
+            ThemeManager.SetTheme(
+                ThemeManager.ThemeMode.Dark);
         }
 
+        /// <summary>
+        /// Handles disabling dark mode.
+        /// </summary>
         private void DarkModeToggle_Unchecked(
             object sender,
             RoutedEventArgs e)
@@ -67,23 +96,17 @@ namespace AzVideoDownloader
             if (_isLoadingSettings)
                 return;
 
-            SetTheme(ThemeManager.ThemeMode.Light);
+            ThemeManager.SetTheme(
+                ThemeManager.ThemeMode.Light);
         }
+
+        #endregion
+
+        #region Notifications
 
         /// <summary>
-        /// Applies and persists the selected application theme.
+        /// Handles changes to the application's popup visibility setting.
         /// </summary>
-        private static void SetTheme(
-            ThemeManager.ThemeMode themeMode)
-        {
-            ThemeManager.ApplyTheme(themeMode);
-
-            Properties.Settings.Default.ThemeMode =
-                themeMode.ToString();
-
-            Properties.Settings.Default.Save();
-        }
-
         private void PopupsToggle_Changed(
             object sender,
             RoutedEventArgs e)
@@ -97,11 +120,20 @@ namespace AzVideoDownloader
             Properties.Settings.Default.Save();
         }
 
+        #endregion
+
+        #region Window Actions
+
+        /// <summary>
+        /// Closes the settings window without performing any additional actions.
+        /// </summary>
         private void CloseButton_Click(
             object sender,
             RoutedEventArgs e)
         {
             Close();
         }
+
+        #endregion
     }
 }

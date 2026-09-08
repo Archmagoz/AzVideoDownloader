@@ -16,9 +16,58 @@ namespace AzVideoDownloader.Services
         }
 
         /// <summary>
+        /// Gets the theme mode persisted in application settings.
+        /// </summary>
+        public static ThemeMode SavedThemeMode
+        {
+            get
+            {
+                if (Enum.TryParse(
+                        Properties.Settings.Default.ThemeMode,
+                        out ThemeMode mode))
+                {
+                    return mode;
+                }
+
+                return ThemeMode.System;
+            }
+        }
+
+        /// <summary>
+        /// Gets the theme currently resolved by the application.
+        /// </summary>
+        public static ThemeMode CurrentThemeMode =>
+            SavedThemeMode == ThemeMode.System
+                ? IsWindowsDarkMode()
+                    ? ThemeMode.Dark
+                    : ThemeMode.Light
+                : SavedThemeMode;
+
+        /// <summary>
+        /// Applies the currently persisted application theme.
+        /// </summary>
+        public static void ApplySavedTheme()
+        {
+            ApplyTheme(SavedThemeMode);
+        }
+
+        /// <summary>
+        /// Applies and persists the specified application theme.
+        /// </summary>
+        public static void SetTheme(ThemeMode mode)
+        {
+            Properties.Settings.Default.ThemeMode =
+                mode.ToString();
+
+            Properties.Settings.Default.Save();
+
+            ApplyTheme(mode);
+        }
+
+        /// <summary>
         /// Applies the specified theme mode to the application.
         /// </summary>
-        public static void ApplyTheme(ThemeMode mode)
+        private static void ApplyTheme(ThemeMode mode)
         {
             var paletteHelper = new PaletteHelper();
             var theme = paletteHelper.GetTheme();
