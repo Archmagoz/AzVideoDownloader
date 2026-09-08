@@ -19,22 +19,24 @@ namespace AzVideoDownloader
 
         // Services that encapsulate the actual yt-dlp/ffmpeg calls and
         // provide a higher-level API for the UI to consume.
+        private readonly YoutubeDL _ytdl = null!;
         private readonly GetVideoinfo _videoInfoService = null!;
         private readonly GetVideoThumbnail _thumbnailService = new();
         private readonly VideoDownloadService _videoDownloadService = null!;
-
-        // Cancels a stale in-flight fetch when a newer one supersedes it.
-        private CancellationTokenSource? _fetchCts;
 
         // Duration (seconds) of the currently loaded video, used to derive
         // an approximate bitrate per selected format.
         private double? _currentVideoDurationSeconds;
 
-        // Provides the actual yt-dlp/ffmpeg functionality.
-        private readonly YoutubeDL _ytdl = null!;
-
         // Time to wait after the user stops typing before fetching video info.
-        private static readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(700);
+        private readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(700);
+
+        // Debounces link input changes: waits for the user to stop typing before
+        // triggering a video info fetch, avoiding a yt-dlp call on every keystroke.
+        private readonly DebouncedTriggerHelper _linkDebounce = null!;
+
+        // Cancels a stale in-flight fetch when a newer one supersedes it.
+        private CancellationTokenSource? _fetchCts;
 
         // Container extensions offered by ChangeExtensionComboBox for a
         // regular video download. Kept in sync with the ComboBoxItems
@@ -52,10 +54,6 @@ namespace AzVideoDownloader
         // ComboBox is populated with the most recent first, so the oldest
         // entries are dropped when the list exceeds this limit.
         private const int MaxRecentOutputDirectories = 5;
-
-        // Debounces link input changes: waits for the user to stop typing before
-        // triggering a video info fetch, avoiding a yt-dlp call on every keystroke.
-        private readonly DebouncedTriggerHelper _linkDebounce = null!;
 
         #endregion
 
