@@ -5,11 +5,12 @@ using System.Windows.Controls;
 
 using YoutubeDLSharp;
 
-using AzVideoDownloader.Services;
 using AzVideoDownloader.Services.Fetch;
 using AzVideoDownloader.Services.Core;
 using AzVideoDownloader.Services.Models;
 using AzVideoDownloader.Services.Helpers;
+
+using static AzVideoDownloader.Services.ThemeManager;
 
 namespace AzVideoDownloader
 {
@@ -61,8 +62,7 @@ namespace AzVideoDownloader
 
         public MainWindow()
         {
-            ThemeManager.ApplySavedTheme();
-
+            ApplySavedTheme();
             InitializeComponent();
             LoadRecentOutputDirectories();
 
