@@ -1,6 +1,6 @@
 using AzVideoDownloader.Services.Fetch;
 
-namespace AzVideoDownloader.Services.Models
+namespace AzVideoDownloader.Models
 {
     /// <summary>
     /// Plain data returned by <see cref="GetVideoInfo"/>, decoupled from

@@ -1,3 +1,6 @@
 <Solution>
   <Project Path="AzVideoDownloader.csproj" />
+  <Properties Name="SolutionProperties">
+    <Property Name="WorkspaceFolder" Value="." />
+  </Properties>
 </Solution>

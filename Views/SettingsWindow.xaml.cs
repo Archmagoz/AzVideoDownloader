@@ -1,6 +1,6 @@
 ﻿using System.Windows;
 
-using AzVideoDownloader.Services;
+using AzVideoDownloader.Services.Theming;
 
 namespace AzVideoDownloader
 {

@@ -1,6 +1,6 @@
 using System.Windows.Threading;
 
-namespace AzVideoDownloader.Services.Helpers
+namespace AzVideoDownloader.Helpers
 {
     /// <summary>
     /// Fires a callback either after a debounce delay (each call to

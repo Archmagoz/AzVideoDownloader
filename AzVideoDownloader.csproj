@@ -19,12 +19,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="Fonts\Roboto-SemiBold.ttf">
+    <Resource Include="Assets\Fonts\Roboto-SemiBold.ttf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="icon.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Resource>
+    <Resource Include="icon.ico" />
   </ItemGroup>
 
   <ItemGroup>

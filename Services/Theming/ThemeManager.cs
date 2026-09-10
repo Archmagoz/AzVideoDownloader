@@ -1,7 +1,7 @@
 using Microsoft.Win32;
 using MaterialDesignThemes.Wpf;
 
-namespace AzVideoDownloader.Services
+namespace AzVideoDownloader.Services.Theming
 {
     /// <summary>
     /// Manages the application's Material Design theme.

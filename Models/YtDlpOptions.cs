@@ -1,4 +1,4 @@
-namespace AzVideoDownloader.Services.Models
+namespace AzVideoDownloader.Models
 {
     /// <summary>
     /// Plain snapshot of the yt-dlp-related UI state (checkboxes, combos,

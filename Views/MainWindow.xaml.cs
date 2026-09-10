@@ -5,12 +5,13 @@ using System.Windows.Controls;
 
 using YoutubeDLSharp;
 
-using AzVideoDownloader.Services.Fetch;
-using AzVideoDownloader.Services.Core;
-using AzVideoDownloader.Services.Models;
-using AzVideoDownloader.Services.Helpers;
+using AzVideoDownloader.Models;
+using AzVideoDownloader.Helpers;
 
-using static AzVideoDownloader.Services.ThemeManager;
+using AzVideoDownloader.Services.Core;
+using AzVideoDownloader.Services.Fetch;
+
+using static AzVideoDownloader.Services.Theming.ThemeManager;
 
 namespace AzVideoDownloader
 {

@@ -14,7 +14,7 @@
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource MaterialDesignPaper}"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
-        Icon="icon.ico">
+        Icon="/icon.ico">
 
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -65,7 +65,9 @@
                         ToolTip="Configurações"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
-                        Click="SettingsButton_Click" Width="40" Height="40">
+                        Click="SettingsButton_Click"
+                        Width="40"
+                        Height="40">
 
                     <materialDesign:PackIcon Kind="Cog"
                                              Width="18"

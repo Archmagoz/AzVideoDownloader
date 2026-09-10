@@ -1,4 +1,4 @@
-using AzVideoDownloader.Services.Models;
+using AzVideoDownloader.Models;
 
 namespace AzVideoDownloader.Services.Core
 {
