@@ -6,7 +6,9 @@ A ideia não é reinventar o processo de download, mas oferecer uma interface si
 
 ## Interface
 
-![Az Video Downloader Interface](interface.png)
+![Az Video Downloader Interface](Docs/v1.1.1-light.png)
+
+![Az Video Downloader Interface](Docs/v1.1.1-dark.png)
 
 ## Recursos
 
