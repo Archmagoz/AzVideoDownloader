@@ -10,6 +10,8 @@ namespace AzVideoDownloader.Services.Core
     /// </summary>
     public static class ToolManagerService
     {
+        #region Fields
+
         private const string ToolDirectoryName = "AzVideoDownloader";
 
         private static readonly string ToolsDirectory =
@@ -18,6 +20,10 @@ namespace AzVideoDownloader.Services.Core
                 ToolDirectoryName,
                 Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "default"
             );
+
+        #endregion
+
+        #region Tool Paths
 
         public static string YtDlpPath =>
             Path.Combine(ToolsDirectory, "yt-dlp.exe");
@@ -36,6 +42,10 @@ namespace AzVideoDownloader.Services.Core
         /// </summary>
         public static string DenoPath =>
             Path.Combine(ToolsDirectory, "deno.exe");
+
+        #endregion
+
+        #region Public API
 
         public static void EnsureToolsExist()
         {
@@ -102,6 +112,10 @@ namespace AzVideoDownloader.Services.Core
             return options;
         }
 
+        #endregion
+
+        #region Private Helpers
+
         private static void ExtractIfNeeded(
             string resourceName,
             string destination)
@@ -123,5 +137,7 @@ namespace AzVideoDownloader.Services.Core
 
             stream.CopyTo(file);
         }
+
+        #endregion
     }
 }

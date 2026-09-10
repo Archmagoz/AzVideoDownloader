@@ -1,4 +1,4 @@
-using AzVideoDownloader.Services.Models;
+using AzVideoDownloader.Models;
 
 namespace AzVideoDownloader.Services.Core
 {
@@ -12,7 +12,7 @@ namespace AzVideoDownloader.Services.Core
     /// arguments and avoids the shell-escaping pitfalls of building a single
     /// concatenated command-line string.
     ///
-    /// SCOPE: this service now only covers a raw "mux two already-downloaded
+    /// SCOPE: this service only covers a raw "mux two already-downloaded
     /// streams" ffmpeg call. Audio extraction, thumbnail embedding, metadata
     /// embedding and subtitle embedding are handled by yt-dlp's own
     /// postprocessors instead — see YtDlpArgumentBuilderService. Keeping
@@ -23,10 +23,7 @@ namespace AzVideoDownloader.Services.Core
     {
         public static List<string> Build(FfmpegOptions options)
         {
-            if (options is null)
-            {
-                throw new ArgumentNullException(nameof(options));
-            }
+            ArgumentNullException.ThrowIfNull(options);
 
             var args = new List<string>();
 
@@ -37,15 +34,14 @@ namespace AzVideoDownloader.Services.Core
                 args.Add("copy");
             }
 
-            // ChangeExtension itself has no direct ffmpeg flag here - the
-            // container change happens by setting the output file's
-            // extension when building the final output path. If the source
-            // codecs aren't compatible with the target container and a real
-            // re-encode is needed, that's better delegated to yt-dlp's
-            // --recode-video (it already knows the right codec per
-            // container), rather than hardcoding "-c:v libx264 -c:a aac"
-            // here and re-encoding blindly even when a straight remux would
-            // have worked.
+            // ChangeExtension has no direct ffmpeg flag here - the container
+            // change happens by setting the output file's extension when
+            // building the final output path. If the source codecs aren't
+            // compatible with the target container and a real re-encode is
+            // needed, that's better delegated to yt-dlp's --recode-video
+            // (it already knows the right codec per container), rather than
+            // hardcoding "-c:v libx264 -c:a aac" here and re-encoding
+            // blindly even when a straight remux would have worked.
 
             return args;
         }

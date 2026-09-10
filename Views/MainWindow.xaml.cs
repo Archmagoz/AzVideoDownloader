@@ -1,40 +1,44 @@
-﻿using Microsoft.Win32; // OpenFolderDialog (available on .NET 8+ / WPF)
+﻿using Microsoft.Win32;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 
 using YoutubeDLSharp;
 
-using AzVideoDownloader.Services;
-using AzVideoDownloader.Services.Fetch;
+using AzVideoDownloader.Models;
+using AzVideoDownloader.Helpers;
+
 using AzVideoDownloader.Services.Core;
-using AzVideoDownloader.Services.Models;
-using AzVideoDownloader.Services.Helpers;
+using AzVideoDownloader.Services.Fetch;
+
+using static AzVideoDownloader.Services.Theming.ThemeManager;
 
 namespace AzVideoDownloader
 {
     public partial class MainWindow : Window
     {
-        // ------------------------------------------------------------
-        //  SERVICES
-        // ------------------------------------------------------------
+        #region Fields
+
+        // Services that encapsulate the actual yt-dlp/ffmpeg calls and
+        // provide a higher-level API for the UI to consume.
+        private readonly YoutubeDL _ytdl = null!;
         private readonly GetVideoinfo _videoInfoService = null!;
         private readonly GetVideoThumbnail _thumbnailService = new();
         private readonly VideoDownloadService _videoDownloadService = null!;
-        private readonly DebouncedTriggerHelper _linkDebounce = null!;
-
-        // Cancels a stale in-flight fetch when a newer one supersedes it.
-        private CancellationTokenSource? _fetchCts;
 
         // Duration (seconds) of the currently loaded video, used to derive
         // an approximate bitrate per selected format.
         private double? _currentVideoDurationSeconds;
 
-        // Provides the actual yt-dlp/ffmpeg functionality.
-        private readonly YoutubeDL _ytdl = null!;
-
         // Time to wait after the user stops typing before fetching video info.
-        private static readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(700);
+        private readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(700);
+
+        // Debounces link input changes: waits for the user to stop typing before
+        // triggering a video info fetch, avoiding a yt-dlp call on every keystroke.
+        private readonly DebouncedTriggerHelper _linkDebounce = null!;
+
+        // Cancels a stale in-flight fetch when a newer one supersedes it.
+        private CancellationTokenSource? _fetchCts;
 
         // Container extensions offered by ChangeExtensionComboBox for a
         // regular video download. Kept in sync with the ComboBoxItems
@@ -48,9 +52,74 @@ namespace AzVideoDownloader
         // never drift apart.
         private static readonly string[] AudioContainerExtensions = YtDlpAudioFormats.UiSelectableLabels;
 
-        // ------------------------------------------------------------
-        //  USER NOTIFICATIONS
-        // ------------------------------------------------------------
+        // Number of recent output directories to keep in the history. The
+        // ComboBox is populated with the most recent first, so the oldest
+        // entries are dropped when the list exceeds this limit.
+        private const int MaxRecentOutputDirectories = 5;
+
+        #endregion
+
+        #region Constructor
+
+        public MainWindow()
+        {
+            ApplySavedTheme();
+            InitializeComponent();
+            LoadRecentOutputDirectories();
+
+            // Initialize the bundled tools (yt-dlp, ffmpeg, ffprobe, deno) if they
+            // aren't already present in the user's AppData folder. This is
+            // done here rather than in the constructor of ToolManagerService
+            // so that the MainWindow can show a user-facing error message and
+            // exit gracefully if the extraction fails (e.g. antivirus
+            // quarantines the binaries).
+            try
+            {
+                ToolManagerService.EnsureToolsExist();
+            }
+            catch (FileNotFoundException ex)
+            {
+                ShowPopupForced(ex.Message, "Az Video Downloader",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                Application.Current.Shutdown();
+                return;
+            }
+
+            _ytdl = new YoutubeDL
+            {
+                YoutubeDLPath = ToolManagerService.YtDlpPath,
+                FFmpegPath = ToolManagerService.FfmpegPath,
+                OutputFolder = OutputDir.Text
+            };
+
+            _videoInfoService = new GetVideoinfo(_ytdl);
+            _videoDownloadService = new VideoDownloadService(_ytdl);
+
+            // Signals callbacks when the user stops typing for a while, so we don't
+            // spam yt-dlp with a fetch for every keystroke. The actual fetch
+            // is triggered in OnLinkDebounceElapsed, which runs on the UI thread
+            // after the debounce delay.
+            _linkDebounce = new DebouncedTriggerHelper(DebounceDelay, OnLinkDebounceElapsed);
+
+            // Wire up the events that drive the UI's reactive behavior.
+            InputLink.TextChanged += InputLink_TextChanged;
+            VideoFormatListBox.SelectionChanged += VideoFormatListBox_SelectionChanged;
+
+            // Drives the "audio only" cross-control state: disabling
+            // merge/subtitles (they don't apply to an audio-only output)
+            // and swapping the extension combo between video/audio containers.
+            AudioOnlyCheckBox.Checked += AudioOnlyCheckBox_Checked;
+            AudioOnlyCheckBox.Unchecked += AudioOnlyCheckBox_Unchecked;
+
+            // Fires for BOTH Ctrl+V and the right-click "Paste" context menu
+            // item, since both route through the same WPF paste command.
+            // We use it to skip the debounce delay specifically on paste.
+            DataObject.AddPastingHandler(InputLink, InputLink_Pasting);
+        }
+
+        #endregion
+
+        #region User Notifications
 
         /// <summary>
         /// Displays a message box when user popups are enabled in the application settings.
@@ -67,57 +136,21 @@ namespace AzVideoDownloader
             MessageBox.Show(message, title, buttons, image);
         }
 
-        public MainWindow()
+        /// <summary>
+        /// Displays a message box regardless of the application settings.
+        /// </summary>
+        private static void ShowPopupForced(
+            string message,
+            string title,
+            MessageBoxButton buttons,
+            MessageBoxImage image)
         {
-            ThemeManager.ApplyTheme(
-                Enum.Parse<ThemeManager.ThemeMode>(
-                    Properties.Settings.Default.ThemeMode));
-
-            InitializeComponent();
-            LoadRecentOutputDirectories();
-
-            try
-            {
-                ToolManagerService.EnsureToolsExist();
-            }
-            catch (FileNotFoundException ex)
-            {
-                ShowPopup(ex.Message, "Az Video Downloader",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-                Application.Current.Shutdown();
-                return;
-            }
-
-            _ytdl = new YoutubeDL
-            {
-                YoutubeDLPath = ToolManagerService.YtDlpPath,
-                FFmpegPath = ToolManagerService.FfmpegPath,
-                OutputFolder = OutputDir.Text
-            };
-
-            _videoInfoService = new GetVideoinfo(_ytdl);
-            _videoDownloadService = new VideoDownloadService(_ytdl);
-
-            _linkDebounce = new DebouncedTriggerHelper(DebounceDelay, OnLinkDebounceElapsed);
-
-            VideoFormatListBox.SelectionChanged += VideoFormatListBox_SelectionChanged;
-            InputLink.TextChanged += InputLink_TextChanged;
-
-            // Drives the "audio only" cross-control state: disabling
-            // merge/subtitles (they don't apply to an audio-only output)
-            // and swapping the extension combo between video/audio containers.
-            AudioOnlyCheckBox.Checked += AudioOnlyCheckBox_Checked;
-            AudioOnlyCheckBox.Unchecked += AudioOnlyCheckBox_Unchecked;
-
-            // Fires for BOTH Ctrl+V and the right-click "Paste" context menu
-            // item, since both route through the same WPF paste command.
-            // We use it to skip the debounce delay specifically on paste.
-            DataObject.AddPastingHandler(InputLink, InputLink_Pasting);
+            MessageBox.Show(message, title, buttons, image);
         }
 
-        // ------------------------------------------------------------
-        //  TOP BAR ACTIONS
-        // ------------------------------------------------------------
+        #endregion
+
+        #region Top Bar Actions
 
         private void PasteLinkButton_Click(object sender, RoutedEventArgs e)
         {
@@ -154,11 +187,12 @@ namespace AzVideoDownloader
 
         private void OnLinkDebounceElapsed() => _ = FetchVideoInfoAsync(InputLink.Text.Trim());
 
-        // ------------------------------------------------------------
-        //  VIDEO INFO FETCH
-        //  Orchestrates VideoInfoService + ThumbnailService and pushes
-        //  the results into the UI controls.
-        // ------------------------------------------------------------
+        #endregion
+
+        #region Video Info Fetch
+
+        // Orchestrates VideoInfoService + ThumbnailService and pushes
+        // the results into the UI controls.
 
         private async Task FetchVideoInfoAsync(string url)
         {
@@ -308,11 +342,12 @@ namespace AzVideoDownloader
             DownloadButton.IsEnabled = true;
         }
 
-        // ------------------------------------------------------------
-        //  VIDEO FORMAT SELECTION
-        //  Updates the info panel (fps/resolution/bitrate/size) whenever
-        //  the user picks a different video format from the list.
-        // ------------------------------------------------------------
+        #endregion
+
+        #region Video Format Selection
+
+        // Updates the info panel (fps/resolution/bitrate/size) whenever
+        // the user picks a different video format from the list.
 
         private void VideoFormatListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -344,12 +379,13 @@ namespace AzVideoDownloader
                 : "—";
         }
 
-        // ------------------------------------------------------------
-        //  YT-DLP OPTIONS
-        //  "Somente áudio" changes what the other options mean: merging
-        //  separate streams and embedding subtitles no longer apply, and
-        //  the output container should be an audio format.
-        // ------------------------------------------------------------
+        #endregion
+
+        #region Yt-Dlp Options
+
+        // "Somente áudio" changes what the other options mean: merging
+        // separate streams and embedding subtitles no longer apply, and
+        // the output container should be an audio format.
 
         private void AudioOnlyCheckBox_Checked(object sender, RoutedEventArgs e)
         {
@@ -408,11 +444,9 @@ namespace AzVideoDownloader
             ChangeExtensionComboBox.SelectedItem = defaultItem ?? ChangeExtensionComboBox.Items.Cast<ComboBoxItem>().FirstOrDefault();
         }
 
-        // ------------------------------------------------------------
-        //  OUTPUT FOLDER
-        // ------------------------------------------------------------
+        #endregion
 
-        private const int MaxRecentOutputDirectories = 5;
+        #region Output Folder
 
         /// <summary>
         /// Opens the folder browser and sets the selected output directory.
@@ -503,12 +537,11 @@ namespace AzVideoDownloader
             if (string.IsNullOrWhiteSpace(stored))
                 return [];
 
-            return stored
+            return [.. stored
                 .Split('|', StringSplitOptions.RemoveEmptyEntries)
                 .Where(path => !string.IsNullOrWhiteSpace(path))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Take(MaxRecentOutputDirectories)
-                .ToList();
+                .Take(MaxRecentOutputDirectories)];
         }
 
         /// <summary>
@@ -566,9 +599,10 @@ namespace AzVideoDownloader
             }
         }
 
-        // ------------------------------------------------------------
-        //  SETTINGS WINDOW
-        // ------------------------------------------------------------
+        #endregion
+
+        #region Settings Window
+
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
             var settingsWindow = new SettingsWindow
@@ -579,9 +613,9 @@ namespace AzVideoDownloader
             settingsWindow.ShowDialog();
         }
 
-        // ------------------------------------------------------------
-        //  DOWNLOAD ACTION
-        // ------------------------------------------------------------
+        #endregion
+
+        #region Download Action
 
         private async void DownloadButton_Click(object sender, RoutedEventArgs e)
         {
@@ -712,7 +746,7 @@ namespace AzVideoDownloader
                         ? string.Join(Environment.NewLine, result.ErrorOutput)
                         : "O download falhou.";
 
-                    ShowPopup(
+                    ShowPopupForced(
                         error,
                         "Az Video Downloader",
                         MessageBoxButton.OK,
@@ -738,7 +772,7 @@ namespace AzVideoDownloader
             {
                 ProgressPercentText.Text = "Erro";
 
-                ShowPopup(
+                ShowPopupForced(
                     ex.Message,
                     "Az Video Downloader",
                     MessageBoxButton.OK,
@@ -749,5 +783,7 @@ namespace AzVideoDownloader
                 DownloadButton.IsEnabled = true;
             }
         }
+
+        #endregion
     }
 }

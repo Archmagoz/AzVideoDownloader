@@ -1,4 +1,4 @@
-using AzVideoDownloader.Services.Models;
+using AzVideoDownloader.Models;
 
 namespace AzVideoDownloader.Services.Core
 {
@@ -15,53 +15,31 @@ namespace AzVideoDownloader.Services.Core
     /// </summary>
     public static class YtDlpArgumentBuilderService
     {
+        #region Public API
+
+        /// <summary>
+        /// Builds the yt-dlp command-line arguments based on the provided options.
+        /// </summary>
         public static List<string> Build(YtDlpOptions options)
         {
-            if (options is null)
-            {
-                throw new ArgumentNullException(nameof(options));
-            }
+            ArgumentNullException.ThrowIfNull(options);
 
             var args = new List<string>();
 
             if (options.AudioOnly)
-            {
                 BuildAudioOnly(options, args);
-            }
+
             else
-            {
                 BuildVideo(options, args);
-            }
 
-            // --- Shared postprocessing flags --------------------------------
-
-            if (options.EmbedThumbnail)
-            {
-                // Skip for audio containers that don't support an embedded
-                // cover picture (e.g. wav) instead of passing a flag that
-                // will just warn/fail per-file.
-                if (!options.AudioOnly || YtDlpAudioFormats.SupportsEmbeddedThumbnail(options.AudioFormat))
-                {
-                    args.Add("--embed-thumbnail");
-                }
-            }
-
-            if (options.EmbedMetadata)
-            {
-                args.Add("--embed-metadata");
-            }
-
-            // Subtitles don't apply to an audio-only extraction.
-            if (options.EmbedSubtitles && !options.AudioOnly)
-            {
-                args.Add("--write-subs");
-                args.Add("--embed-subs");
-                args.Add("--sub-langs");
-                args.Add(string.IsNullOrWhiteSpace(options.SubtitleLangs) ? "all" : options.SubtitleLangs);
-            }
+            BuildSharedPostprocessingFlags(options, args);
 
             return args;
         }
+
+        #endregion
+
+        #region Audio-Only Path
 
         private static void BuildAudioOnly(YtDlpOptions options, List<string> args)
         {
@@ -83,6 +61,10 @@ namespace AzVideoDownloader.Services.Core
                 args.Add(options.AudioQuality);
             }
         }
+
+        #endregion
+
+        #region Video Path
 
         private static void BuildVideo(YtDlpOptions options, List<string> args)
         {
@@ -116,5 +98,39 @@ namespace AzVideoDownloader.Services.Core
                 }
             }
         }
+
+        #endregion
+
+        #region Shared Postprocessing Flags
+
+        private static void BuildSharedPostprocessingFlags(YtDlpOptions options, List<string> args)
+        {
+            if (options.EmbedThumbnail)
+            {
+                // Skip for audio containers that don't support an embedded
+                // cover picture (e.g. wav) instead of passing a flag that
+                // will just warn/fail per-file.
+                if (!options.AudioOnly || YtDlpAudioFormats.SupportsEmbeddedThumbnail(options.AudioFormat))
+                {
+                    args.Add("--embed-thumbnail");
+                }
+            }
+
+            if (options.EmbedMetadata)
+            {
+                args.Add("--embed-metadata");
+            }
+
+            // Subtitles don't apply to an audio-only extraction.
+            if (options.EmbedSubtitles && !options.AudioOnly)
+            {
+                args.Add("--write-subs");
+                args.Add("--embed-subs");
+                args.Add("--sub-langs");
+                args.Add(string.IsNullOrWhiteSpace(options.SubtitleLangs) ? "all" : options.SubtitleLangs);
+            }
+        }
+
+        #endregion
     }
 }
