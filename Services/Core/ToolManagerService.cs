@@ -74,30 +74,37 @@ namespace AzVideoDownloader.Services.Core
         /// see GetVideoinfo and VideoDownloadService, since both are affected
         /// by the JS challenge and the player-client selection.
         ///
-        /// Two overrides are bundled here:
+        /// Three overrides are bundled here:
         ///
         /// 1. "--js-runtimes "deno:{DenoPath}" - pins the bundled Deno
-        ///    runtime for YouTube's JS challenge solving (nsig/PO token
-        ///    deciphering). Solved during extraction, not just download, so
-        ///    both entry points need it.
+        ///    runtime for JS challenge solving (nsig/PO token deciphering).
+        ///    Solved during extraction, not just download, so both entry
+        ///    points need it.
         ///
         /// 2. "--extractor-args youtube:player-client=web_embedded" -
-        ///    widens which YouTube "player clients" yt-dlp queries. By
-        ///    default only a small subset of clients is used, and each
-        ///    client can return a different subset of dubbed-audio tracks;
-        ///    a video with many audio languages may otherwise show only one
-        ///    (typically English/original). This is a community-reported
-        ///    mitigation, NOT a guaranteed fix - some videos may still be
-        ///    missing dub tracks depending on which client YouTube serves
-        ///    them from. There is currently no yt-dlp option that guarantees
-        ///    every audio-language track is listed.
+        ///    widens which "player clients" yt-dlp queries. By default only
+        ///    a small subset of clients is used, and each client can return
+        ///    a different subset of dubbed-audio tracks; a video with many
+        ///    audio languages may otherwise show only one (typically
+        ///    English/original). This is a community-reported mitigation,
+        ///    NOT a guaranteed fix - some videos may still be missing dub
+        ///    tracks depending on which client is served. There is currently
+        ///    no yt-dlp option that guarantees every audio-language track is
+        ///    listed.
+        /// 
+        ///  3. "--cookies-from-browser firefox" - yt-dlp can read cookies from
+        ///     the Firefox browser (workaround for age-restricted content,
+        ///     which yt-dlp cannot access without a logged-in session). This is
+        ///     a community-reported mitigation, NOT a guaranteed fix - some videos
+        ///     may still be inaccessible. (Temporary... probably).
+        ///     User will need to be logged in to Firefox for this to work.
         ///
         /// YoutubeDLSharp's OptionSet has no typed property for either flag
         /// (both are relatively new/niche), so both are added via
         /// AddCustomOption. The "deno:" prefix is required so yt-dlp knows
         /// which runtime the path belongs to (format: RUNTIME[:PATH]).
         /// </summary>
-        public static OptionSet CreateYouTubeOverrideOptions()
+        public static OptionSet CreateOverrideOptions()
         {
             var options = new OptionSet();
 
@@ -108,6 +115,10 @@ namespace AzVideoDownloader.Services.Core
             options.AddCustomOption<string>(
                 "--extractor-args",
                 "youtube:player-client=web_embedded");
+
+            options.AddCustomOption<string>(
+                "--cookies-from-browser",
+                "firefox");
 
             return options;
         }

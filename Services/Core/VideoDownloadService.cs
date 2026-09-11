@@ -35,7 +35,7 @@ namespace AzVideoDownloader.Services.Core
             _ytdl.OutputFolder = outputFolder;
             _ytdl.OutputFileTemplate = "%(title)s.%(ext)s";
 
-            var overrideOptions = BuildOverrideOptions(options, url);
+            var overrideOptions = BuildOverrideOptions(options);
 
             if (options.AudioOnly)
             {
@@ -140,15 +140,14 @@ namespace AzVideoDownloader.Services.Core
 
         /// <summary>
         /// Builds the yt-dlp options used for the current download.
-        /// YouTube-specific extractor options are only applied to YouTube URLs.
+        /// The base override set (js-runtime/extractor-args/cookies - see
+        /// ToolManagerService.CreateOverrideOptions) is applied
+        /// unconditionally, regardless of site, so download and fetch
+        /// (GetVideoinfo) always use the exact same options.
         /// </summary>
-        private static OptionSet BuildOverrideOptions(
-            YtDlpOptions options,
-            string url)
+        private static OptionSet BuildOverrideOptions(YtDlpOptions options)
         {
-            var overrideOptions = IsYouTubeUrl(url)
-                ? ToolManagerService.CreateYouTubeOverrideOptions()
-                : new OptionSet();
+            var overrideOptions = ToolManagerService.CreateOverrideOptions();
 
             ConfigurePostProcessingOptions(overrideOptions, options);
 
@@ -208,19 +207,6 @@ namespace AzVideoDownloader.Services.Core
             }
 
             overrideOptions.RemuxVideo = options.TargetContainer;
-        }
-
-        #endregion
-
-        #region URL Helpers
-
-        /// <summary>
-        /// Determines whether the URL belongs to YouTube.
-        /// </summary>
-        private static bool IsYouTubeUrl(string url)
-        {
-            return url.Contains("youtube.com", StringComparison.OrdinalIgnoreCase)
-                || url.Contains("youtu.be", StringComparison.OrdinalIgnoreCase);
         }
 
         #endregion

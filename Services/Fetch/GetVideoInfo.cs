@@ -32,13 +32,13 @@ namespace AzVideoDownloader.Services.Fetch
         {
             // Same "--js-runtimes deno:<path>" + "--extractor-args
             // youtube:player_client=..." override used for downloads (see
-            // ToolManagerService.CreateYouTubeOverrideOptions): the JS
-            // challenge (nsig/PO token) is solved during extraction, so the
-            // metadata fetch needs it just as much as the download step.
+            // ToolManagerService.CreateOverrideOptions): the JS challenge
+            // (nsig/PO token) is solved during extraction, so the metadata
+            // fetch needs it just as much as the download step.
             var result = await _ytdl.RunVideoDataFetch(
                 url,
                 ct: ct,
-                overrideOptions: ToolManagerService.CreateYouTubeOverrideOptions());
+                overrideOptions: ToolManagerService.CreateOverrideOptions());
 
             if (!result.Success)
                 return null;
