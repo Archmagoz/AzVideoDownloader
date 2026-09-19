@@ -25,6 +25,9 @@ namespace AzVideoDownloader
 
         private const string AppTitle = "Az Video Downloader";
 
+        // Tag value that switches DownloadButton to its red "CANCELAR" state (see MainWindow.xaml).
+        private const string DownloadingButtonState = "Downloading";
+
         // Maximum number of output directories retained in history.
         private const int MaxRecentOutputDirectories = 5;
 
@@ -53,6 +56,9 @@ namespace AzVideoDownloader
 
         // Cancels a metadata request when a newer request supersedes it.
         private CancellationTokenSource? _fetchCts;
+
+        // Cancels the running download. Null when no download is in progress.
+        private CancellationTokenSource? _downloadCts;
 
         // Duration of the current video, used for bitrate estimation and range validation.
         private double? _currentVideoDurationSeconds;
@@ -415,7 +421,8 @@ namespace AzVideoDownloader
                     ? Visibility.Visible
                     : Visibility.Collapsed;
 
-            DownloadButton.IsEnabled = !isFetching;
+            // The button must stay enabled while downloading so the user can still cancel.
+            DownloadButton.IsEnabled = !isFetching || _downloadCts is not null;
 
             ThumbPlaceholderText.Text =
                 isFetching
@@ -702,7 +709,22 @@ namespace AzVideoDownloader
 
         #region Download Action
 
+        /// <summary>
+        /// Starts a download, or cancels the running one when the button is in its "cancel" state.
+        /// </summary>
         private async void DownloadButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_downloadCts is not null)
+            {
+                ProgressPercentText.Text = "Cancelando...";
+                _downloadCts.Cancel();
+                return;
+            }
+
+            await StartDownloadAsync();
+        }
+
+        private async Task StartDownloadAsync()
         {
             if (string.IsNullOrWhiteSpace(InputLink.Text))
             {
@@ -756,9 +778,14 @@ namespace AzVideoDownloader
                 startSeconds,
                 endSeconds);
 
+            using var cts = new CancellationTokenSource();
+            _downloadCts = cts;
+
             try
             {
-                DownloadButton.IsEnabled = false;
+                // Turns DownloadButton into the red "CANCELAR" button.
+                DownloadButton.Tag = DownloadingButtonState;
+
                 DownloadProgressBar.Value = 0;
                 ProgressPercentText.Text = "0%";
 
@@ -768,10 +795,18 @@ namespace AzVideoDownloader
                     selectedVideo,
                     selectedAudio,
                     options,
-                    new Progress<DownloadProgress>(OnDownloadProgress));
+                    new Progress<DownloadProgress>(OnDownloadProgress),
+                    cts.Token);
 
                 if (!result.Success)
                 {
+                    // Killing the process may surface as a failed result instead of an exception.
+                    if (cts.IsCancellationRequested)
+                    {
+                        ProgressPercentText.Text = "Cancelado";
+                        return;
+                    }
+
                     var error =
                         result.ErrorOutput.Length > 0
                             ? string.Join(Environment.NewLine, result.ErrorOutput)
@@ -797,6 +832,8 @@ namespace AzVideoDownloader
             }
             finally
             {
+                _downloadCts = null;
+                DownloadButton.Tag = null;
                 DownloadButton.IsEnabled = true;
             }
         }
@@ -841,6 +878,11 @@ namespace AzVideoDownloader
         /// </summary>
         private void OnDownloadProgress(DownloadProgress progress)
         {
+            // Ignore late updates (e.g. an "Error" state caused by the killed process)
+            // so they do not overwrite the "Cancelando..." / "Cancelado" label.
+            if (_downloadCts is { IsCancellationRequested: true })
+                return;
+
             switch (progress.State)
             {
                 case DownloadState.Downloading:

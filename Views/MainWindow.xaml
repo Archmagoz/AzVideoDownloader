@@ -7,9 +7,9 @@
         mc:Ignorable="d"
         Title="Az Video Downloader"
         Icon="/icon.ico"
-        Width="1300"
+        Width="1280"
         Height="800"
-        MinWidth="1300"
+        MinWidth="1280"
         MinHeight="800"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource MaterialDesignPaper}"
@@ -312,13 +312,32 @@
                         </StackPanel>
                     </ScrollViewer>
 
+                    <!-- Doubles as the cancel button: code-behind sets Tag="Downloading"
+                         while a download is running, which triggers the red "CANCELAR" state. -->
                     <Button x:Name="DownloadButton"
                             Grid.Row="2"
-                            Style="{StaticResource PrimaryButton}"
-                            Content="BAIXAR"
                             Height="50"
                             Margin="0,18,0,0"
-                            Click="DownloadButton_Click"/>
+                            Click="DownloadButton_Click">
+                        <Button.Style>
+                            <Style TargetType="Button"
+                                   BasedOn="{StaticResource PrimaryButton}">
+                                <Setter Property="Content"
+                                        Value="BAIXAR"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}"
+                                                 Value="Downloading">
+                                        <Setter Property="Content"
+                                                Value="CANCELAR"/>
+                                        <Setter Property="Background"
+                                                Value="#D32F2F"/>
+                                        <Setter Property="BorderBrush"
+                                                Value="#D32F2F"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                 </Grid>
             </materialDesign:Card>
 
@@ -330,7 +349,7 @@
                     <StackPanel>
 
                         <!-- Thumbnail of the current video. -->
-                        <Border Height="320"
+                        <Border Height="340"
                                 CornerRadius="8"
                                 Background="{DynamicResource MaterialDesignDivider}"
                                 ClipToBounds="True">
