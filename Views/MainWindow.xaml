@@ -35,8 +35,10 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Video URL input and clipboard shortcut. -->
-                <Grid Grid.Column="0">
+                <!-- Video URL input and clipboard shortcut.
+                     Disabled as a group while a download is running (see SetDownloadingState). -->
+                <Grid x:Name="LinkInputPanel"
+                      Grid.Column="0">
                     <!-- TextChanged arms the debounce; Pasting triggers an immediate metadata fetch. -->
                     <TextBox x:Name="InputLink"
                              Style="{StaticResource AppTextBox}"
@@ -75,8 +77,10 @@
                                              Height="18"/>
                 </Button>
 
-                <!-- Output directory selector and recent directory history. -->
-                <Grid Grid.Column="2"
+                <!-- Output directory selector and recent directory history.
+                     Disabled as a group while a download is running (see SetDownloadingState). -->
+                <Grid x:Name="OutputDirPanel"
+                      Grid.Column="2"
                       Margin="0,0,-8,0">
                     <ComboBox x:Name="OutputDir"
                               Style="{StaticResource MaterialDesignOutlinedComboBox}"
@@ -115,7 +119,11 @@
             </Grid.ColumnDefinitions>
 
             <!-- ============== COLUMN 1: FORMAT SELECTION ============== -->
-            <materialDesign:Card Grid.Column="0"
+            <!-- The card is disabled while a download is running. IsEnabled is inherited, so
+                 a list disabled on its own (e.g. video list in audio-only mode) stays
+                 disabled after the card is enabled again. -->
+            <materialDesign:Card x:Name="FormatSelectionCard"
+                                 Grid.Column="0"
                                  Style="{StaticResource AppCard}">
                 <Grid>
                     <Grid.RowDefinitions>

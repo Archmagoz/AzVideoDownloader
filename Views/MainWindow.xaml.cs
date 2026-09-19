@@ -783,8 +783,7 @@ namespace AzVideoDownloader
 
             try
             {
-                // Turns DownloadButton into the red "CANCELAR" button.
-                DownloadButton.Tag = DownloadingButtonState;
+                SetDownloadingState(true);
 
                 DownloadProgressBar.Value = 0;
                 ProgressPercentText.Text = "0%";
@@ -833,9 +832,30 @@ namespace AzVideoDownloader
             finally
             {
                 _downloadCts = null;
-                DownloadButton.Tag = null;
-                DownloadButton.IsEnabled = true;
+                SetDownloadingState(false);
             }
+        }
+
+        /// <summary>
+        /// Single entry point for the UI state transition between idle and downloading.
+        /// Keeping every download-related UI change here guarantees that all controls
+        /// are locked and restored together, even when the download fails or is cancelled.
+        /// </summary>
+        private void SetDownloadingState(bool isDownloading)
+        {
+            // Switches DownloadButton between "BAIXAR" and the red "CANCELAR" (see MainWindow.xaml).
+            DownloadButton.Tag = isDownloading ? DownloadingButtonState : null;
+
+            // The button is always clickable: it either starts or cancels a download.
+            DownloadButton.IsEnabled = true;
+
+            // Lock the inputs that are read when the download starts, so the UI cannot
+            // diverge from the running job. Containers are disabled instead of individual
+            // controls because IsEnabled is inherited: controls that are disabled on their
+            // own (e.g. the video list in audio-only mode) keep their state when unlocked.
+            LinkInputPanel.IsEnabled = !isDownloading;
+            OutputDirPanel.IsEnabled = !isDownloading;
+            FormatSelectionCard.IsEnabled = !isDownloading;
         }
 
         /// <summary>
