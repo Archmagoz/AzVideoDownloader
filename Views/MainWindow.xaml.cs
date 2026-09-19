@@ -19,42 +19,30 @@ namespace AzVideoDownloader
     {
         #region Fields
 
-        // Services that encapsulate the actual yt-dlp/ffmpeg calls and
-        // provide a higher-level API for the UI to consume.
+        // Services used by the UI to fetch metadata and execute downloads.
         private readonly YoutubeDL _ytdl = null!;
         private readonly GetVideoinfo _videoInfoService = null!;
-        private readonly GetVideoThumbnail _thumbnailService = new();
         private readonly VideoDownloadService _videoDownloadService = null!;
 
-        // Duration (seconds) of the currently loaded video, used to derive
-        // an approximate bitrate per selected format.
+        // Duration of the current video, used for bitrate estimation.
         private double? _currentVideoDurationSeconds;
 
-        // Time to wait after the user stops typing before fetching video info.
+        // Delay before fetching video information after link input changes.
         private readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(700);
 
-        // Debounces link input changes: waits for the user to stop typing before
-        // triggering a video info fetch, avoiding a yt-dlp call on every keystroke.
+        // Prevents a metadata fetch from being triggered on every keystroke.
         private readonly DebouncedTriggerHelper _linkDebounce = null!;
 
-        // Cancels a stale in-flight fetch when a newer one supersedes it.
+        // Cancels a metadata request when a newer request supersedes it.
         private CancellationTokenSource? _fetchCts;
 
-        // Container extensions offered by ChangeExtensionComboBox for a
-        // regular video download. Kept in sync with the ComboBoxItems
-        // declared in MainWindow.xaml so the designer preview matches the
-        // runtime default state.
+        // Container extensions available for video downloads.
         private static readonly string[] VideoContainerExtensions = YtDlpVideoFormats.UiSelectableLabels;
 
-        // Container extensions offered by ChangeExtensionComboBox once
-        // "Somente áudio" is checked. Sourced from YtDlpAudioFormats so this
-        // list and the --audio-format mapping (incl. "ogg" -> "vorbis")
-        // never drift apart.
+        // Container extensions available for audio-only downloads.
         private static readonly string[] AudioContainerExtensions = YtDlpAudioFormats.UiSelectableLabels;
 
-        // Number of recent output directories to keep in the history. The
-        // ComboBox is populated with the most recent first, so the oldest
-        // entries are dropped when the list exceeds this limit.
+        // Maximum number of output directories retained in history.
         private const int MaxRecentOutputDirectories = 5;
 
         #endregion
@@ -67,20 +55,20 @@ namespace AzVideoDownloader
             InitializeComponent();
             LoadRecentOutputDirectories();
 
-            // Initialize the bundled tools (yt-dlp, ffmpeg, ffprobe, deno) if they
-            // aren't already present in the user's AppData folder. This is
-            // done here rather than in the constructor of ToolManagerService
-            // so that the MainWindow can show a user-facing error message and
-            // exit gracefully if the extraction fails (e.g. antivirus
-            // quarantines the binaries).
+            // Initialize bundled tools before creating the YoutubeDL instance.
+            // Keeping this here allows tool extraction failures to be reported to the UI.
             try
             {
                 ToolManagerService.EnsureToolsExist();
             }
             catch (FileNotFoundException ex)
             {
-                ShowPopupForced(ex.Message, "Az Video Downloader",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowPopupForced(
+                    ex.Message,
+                    "Az Video Downloader",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+
                 Application.Current.Shutdown();
                 return;
             }
@@ -95,25 +83,18 @@ namespace AzVideoDownloader
             _videoInfoService = new GetVideoinfo(_ytdl);
             _videoDownloadService = new VideoDownloadService(_ytdl);
 
-            // Signals callbacks when the user stops typing for a while, so we don't
-            // spam yt-dlp with a fetch for every keystroke. The actual fetch
-            // is triggered in OnLinkDebounceElapsed, which runs on the UI thread
-            // after the debounce delay.
+            // Fetch metadata after the user pauses link input.
             _linkDebounce = new DebouncedTriggerHelper(DebounceDelay, OnLinkDebounceElapsed);
 
-            // Wire up the events that drive the UI's reactive behavior.
+            // Register UI event handlers.
             InputLink.TextChanged += InputLink_TextChanged;
             VideoFormatListBox.SelectionChanged += VideoFormatListBox_SelectionChanged;
 
-            // Drives the "audio only" cross-control state: disabling
-            // merge/subtitles (they don't apply to an audio-only output)
-            // and swapping the extension combo between video/audio containers.
+            // Keep video-only controls synchronized with the audio-only state.
             AudioOnlyCheckBox.Checked += AudioOnlyCheckBox_Checked;
             AudioOnlyCheckBox.Unchecked += AudioOnlyCheckBox_Unchecked;
 
-            // Fires for BOTH Ctrl+V and the right-click "Paste" context menu
-            // item, since both route through the same WPF paste command.
-            // We use it to skip the debounce delay specifically on paste.
+            // Trigger an immediate fetch after pasted text is inserted.
             DataObject.AddPastingHandler(InputLink, InputLink_Pasting);
         }
 
@@ -163,9 +144,8 @@ namespace AzVideoDownloader
 
         private void InputLink_Pasting(object sender, DataObjectPastingEventArgs e)
         {
-            // This event fires BEFORE the pasted text is actually inserted
-            // into the TextBox, so we defer to a lower dispatcher priority
-            // to run right after WPF finishes updating InputLink.Text.
+            // Pasting occurs before TextBox.Text is updated, so defer the trigger
+            // until WPF has applied the pasted value.
             Dispatcher.BeginInvoke(new Action(_linkDebounce.TriggerNow),
                 System.Windows.Threading.DispatcherPriority.Background);
         }
@@ -174,8 +154,7 @@ namespace AzVideoDownloader
         {
             if (string.IsNullOrWhiteSpace(InputLink.Text))
             {
-                // Nothing to fetch: cancel any pending work and go back to
-                // the empty/placeholder state immediately, no need to wait.
+                // Clear the UI immediately when the link is empty.
                 _linkDebounce.Cancel();
                 _fetchCts?.Cancel();
                 ResetToDefaultState();
@@ -191,13 +170,11 @@ namespace AzVideoDownloader
 
         #region Video Info Fetch
 
-        // Orchestrates VideoInfoService + ThumbnailService and pushes
-        // the results into the UI controls.
+        // Fetches video metadata and thumbnail, then updates the UI.
 
         private async Task FetchVideoInfoAsync(string url)
         {
-            // Supersede any fetch still in flight - only the most recent
-            // link the user landed on should end up populating the UI.
+            // Only the most recent request is allowed to update the UI.
             _fetchCts?.Cancel();
             _fetchCts?.Dispose();
             var cts = new CancellationTokenSource();
@@ -216,7 +193,7 @@ namespace AzVideoDownloader
                 var info = await _videoInfoService.FetchAsync(url, cts.Token);
 
                 if (cts.Token.IsCancellationRequested)
-                    return; // superseded by a newer fetch
+                    return;
 
                 if (info is null)
                 {
@@ -226,7 +203,7 @@ namespace AzVideoDownloader
 
                 ApplyVideoInfo(info);
 
-                var thumbnail = await _thumbnailService.LoadAsync(info.ThumbnailUrl);
+                var thumbnail = await GetVideoThumbnail.LoadAsync(info.ThumbnailUrl);
                 if (!cts.Token.IsCancellationRequested)
                 {
                     ThumbPreview.Source = thumbnail;
@@ -235,14 +212,13 @@ namespace AzVideoDownloader
             }
             catch (OperationCanceledException)
             {
-                // Superseded by a newer fetch - nothing to show for this one.
+                // A newer request has replaced this one.
             }
             catch (Exception)
             {
                 if (!cts.Token.IsCancellationRequested)
                 {
-                    // Link didn't resolve to anything yt-dlp understands -
-                    // fall back to the default/placeholder state.
+                    // Treat unresolved links as an empty metadata state.
                     ResetToDefaultState();
                 }
             }
@@ -270,20 +246,15 @@ namespace AzVideoDownloader
             AudioFormatListBox.ItemsSource = info.AudioFormats;
             AudioFormatListBox.DisplayMemberPath = nameof(GetAVFormatList.Display);
 
-            // Default the selection to mp4/m4a-compatible streams rather
-            // than blindly picking index 0: the app's default workflow is
-            // "merge + change extension to mp4", and starting from a
-            // format that already matches that container avoids an
-            // unnecessary (slow, lossy) re-encode during download.
+            // Prefer formats compatible with the default output containers
+            // to avoid unnecessary transcoding.
             VideoFormatListBox.SelectedItem = SelectPreferredFormat(info.VideoFormats, preferredExtension: "mp4");
             AudioFormatListBox.SelectedItem = SelectPreferredFormat(info.AudioFormats, preferredExtension: "m4a");
         }
 
         /// <summary>
-        /// Picks the first format whose container extension matches
-        /// <paramref name="preferredExtension"/>, falling back to the first
-        /// available format when no match exists (e.g. a source that only
-        /// offers webm). Returns <see langword="null"/> when the list is empty.
+        /// Selects the first format matching the preferred container, or the first
+        /// available format when no match exists.
         /// </summary>
         private static GetAVFormatList? SelectPreferredFormat(
             IReadOnlyList<GetAVFormatList> formats,
@@ -315,8 +286,7 @@ namespace AzVideoDownloader
         }
 
         /// <summary>
-        /// Clears the whole info panel back to its empty/placeholder state.
-        /// Used when the link is cleared, or when a fetch fails to resolve.
+        /// Resets the video information panel to its default state.
         /// </summary>
         private void ResetToDefaultState()
         {
@@ -346,8 +316,7 @@ namespace AzVideoDownloader
 
         #region Video Format Selection
 
-        // Updates the info panel (fps/resolution/bitrate/size) whenever
-        // the user picks a different video format from the list.
+        // Update format details when the selected video format changes.
 
         private void VideoFormatListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -372,8 +341,7 @@ namespace AzVideoDownloader
                 ? $"{sizeBytes.Value / 1024.0 / 1024.0:0.#} MB"
                 : "—";
 
-            // Approximate bitrate: derived from filesize/duration rather
-            // than a direct property (no stable one confirmed on FormatData).
+            // Estimate bitrate from file size and duration.
             VideoBitrateText.Text = (sizeBytes.HasValue && _currentVideoDurationSeconds is > 0)
                 ? $"{sizeBytes.Value * 8 / _currentVideoDurationSeconds.Value / 1000:0} kbps (aprox.)"
                 : "—";
@@ -383,27 +351,18 @@ namespace AzVideoDownloader
 
         #region Yt-Dlp Options
 
-        // "Somente áudio" changes what the other options mean: merging
-        // separate streams and embedding subtitles no longer apply, and
-        // the output container should be an audio format.
+        // Audio-only mode disables video-specific options and uses audio containers.
 
         private void AudioOnlyCheckBox_Checked(object sender, RoutedEventArgs e)
         {
-            // Merging audio+video streams and embedding subtitles are
-            // meaningless once we're extracting audio only - disable both
-            // (and clear their checked state) so a stale IsChecked=true
-            // can't leak into YtDlpOptions while the controls are hidden
-            // from interaction.
+            // These options are not applicable to audio-only downloads.
             MergeAudioVideoCheckBox.IsEnabled = false;
             MergeAudioVideoCheckBox.IsChecked = false;
 
             EmbedSubtitlesCheckBox.IsEnabled = false;
             EmbedSubtitlesCheckBox.IsChecked = false;
 
-            // Picking a video format is meaningless once we're only
-            // extracting audio - grey the list out so it visually reads as
-            // "not applicable" rather than just quietly being ignored at
-            // download time.
+            // Video format selection is not applicable in audio-only mode.
             VideoFormatListBox.IsEnabled = false;
 
             PopulateExtensionComboBox(AudioContainerExtensions, preferredDefault: "mp3");
@@ -411,8 +370,7 @@ namespace AzVideoDownloader
 
         private void AudioOnlyCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
-            // Restore the default "merge" workflow; subtitles stay
-            // unchecked since that was its original default state too.
+            // Restore the default video download workflow.
             MergeAudioVideoCheckBox.IsEnabled = true;
             MergeAudioVideoCheckBox.IsChecked = true;
 
@@ -424,9 +382,7 @@ namespace AzVideoDownloader
         }
 
         /// <summary>
-        /// Replaces <see cref="ChangeExtensionComboBox"/>'s items with
-        /// <paramref name="extensions"/> and selects <paramref name="preferredDefault"/>
-        /// (falling back to the first entry if it isn't present).
+        /// Populates the output container selector and selects the preferred default.
         /// </summary>
         private void PopulateExtensionComboBox(IReadOnlyList<string> extensions, string preferredDefault)
         {
@@ -448,9 +404,6 @@ namespace AzVideoDownloader
 
         #region Output Folder
 
-        /// <summary>
-        /// Opens the folder browser and sets the selected output directory.
-        /// </summary>
         private void BrowseOutputButton_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new OpenFolderDialog
@@ -465,10 +418,6 @@ namespace AzVideoDownloader
             SetOutputDirectory(dialog.FolderName, addToHistory: true);
         }
 
-        /// <summary>
-        /// Sets the active output directory and optionally updates the recent
-        /// directory history.
-        /// </summary>
         private void SetOutputDirectory(string directory, bool addToHistory)
         {
             if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
@@ -478,7 +427,7 @@ namespace AzVideoDownloader
             {
                 AddRecentOutputDirectory(directory);
 
-                // Select the directory after the ComboBox has been populated.
+                // Select after refreshing the ComboBox.
                 OutputDir.SelectedItem = directory;
                 return;
             }
@@ -487,8 +436,7 @@ namespace AzVideoDownloader
         }
 
         /// <summary>
-        /// Adds a directory to the recent output history, moving existing entries
-        /// to the top and keeping the history limited to the configured maximum.
+        /// Adds a directory to history and moves it to the most recent position.
         /// </summary>
         private void AddRecentOutputDirectory(string directory)
         {
@@ -511,8 +459,7 @@ namespace AzVideoDownloader
         }
 
         /// <summary>
-        /// Loads the persisted recent output directories and removes entries
-        /// that no longer exist.
+        /// Loads persisted directories and removes paths that no longer exist.
         /// </summary>
         private void LoadRecentOutputDirectories()
         {
@@ -527,9 +474,6 @@ namespace AzVideoDownloader
                 OutputDir.SelectedItem = directories[0];
         }
 
-        /// <summary>
-        /// Returns the recent output directories stored in application settings.
-        /// </summary>
         private static List<string> GetRecentOutputDirectories()
         {
             var stored = Properties.Settings.Default.RecentOutputDirectories;
@@ -544,11 +488,6 @@ namespace AzVideoDownloader
                 .Take(MaxRecentOutputDirectories)];
         }
 
-        /// <summary>
-        /// Persists the recent output directories in application settings.
-        /// Windows paths cannot contain the pipe character, so it is safe
-        /// to use it as the separator.
-        /// </summary>
         private static void SaveRecentOutputDirectories(IEnumerable<string> directories)
         {
             Properties.Settings.Default.RecentOutputDirectories =
@@ -557,9 +496,6 @@ namespace AzVideoDownloader
             Properties.Settings.Default.Save();
         }
 
-        /// <summary>
-        /// Refreshes the ComboBox items from the supplied directory history.
-        /// </summary>
         private void PopulateRecentOutputDirectories(IEnumerable<string> directories)
         {
             OutputDir.Items.Clear();
@@ -571,9 +507,7 @@ namespace AzVideoDownloader
         }
 
         /// <summary>
-        /// Handles manual selection from the recent-directory dropdown.
-        /// The selected directory becomes the active output directory and is
-        /// moved to the top of the history.
+        /// Activates the selected directory and moves it to the top of history.
         /// </summary>
         private void OutputDir_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -582,8 +516,7 @@ namespace AzVideoDownloader
 
             var directories = GetRecentOutputDirectories();
 
-            // The selected directory is already part of the history.
-            // Move it to the top without rebuilding the ComboBox.
+            // Move the selected entry to the top without rebuilding the ComboBox.
             directories.RemoveAll(path =>
                 string.Equals(path, directory, StringComparison.OrdinalIgnoreCase));
 
@@ -646,11 +579,8 @@ namespace AzVideoDownloader
             var selectedVideo = VideoFormatListBox.SelectedItem as GetAVFormatList;
             var selectedAudio = AudioFormatListBox.SelectedItem as GetAVFormatList;
 
-            // Only block on "no video format selected" when there actually
-            // were formats to choose from. An empty list (site/video with
-            // no per-format listing, or a fetch that returned nothing)
-            // isn't a user mistake - VideoDownloadService.BuildVideoFormatSelector
-            // falls back to a default yt-dlp selector in that case.
+            // Require an explicit video selection only when formats are available.
+            // The download service provides a default selector for empty format lists.
             var hasVideoFormatsAvailable = VideoFormatListBox.ItemsSource is IReadOnlyCollection<GetAVFormatList> videoFormats
                 && videoFormats.Count > 0;
 
@@ -665,16 +595,8 @@ namespace AzVideoDownloader
                 return;
             }
 
-            // NOTE: audio-only downloads no longer go through a manual
-            // ffmpeg "-vn" call. yt-dlp's own "-x" extracts the best
-            // available audio for us (picking a real audio-only stream
-            // when the site offers one, instead of assuming a combined
-            // video+audio file was already downloaded), and
-            // "--audio-format" handles the conversion - see
-            // YtDlpArgumentBuilderService. This is also why the previous
-            // "somente áudio não funciona" symptom should be gone: before,
-            // a video format still had to be selected/downloaded for "-vn"
-            // to have anything to strip.
+            // yt-dlp handles audio extraction and conversion through -x and
+            // --audio-format; no manual ffmpeg -vn step is required.
             var options = new YtDlpOptions
             {
                 AudioOnly = isAudioOnly,
@@ -690,9 +612,7 @@ namespace AzVideoDownloader
 
                 ChangeExtension = ChangeExtensionCheckBox.IsChecked == true,
                 TargetContainer = !isAudioOnly ? (ChangeExtensionComboBox.Text ?? "mp4") : "mp4",
-                // Falls back to the source video's extension so the
-                // effective container is still correct when ChangeExtension
-                // is off (e.g. an unmodified webm source stays webm).
+                // Preserve the source container when extension conversion is disabled.
                 SourceContainer = selectedVideo?.Source.Extension ?? "mp4"
             };
 

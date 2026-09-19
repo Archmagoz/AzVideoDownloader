@@ -8,14 +8,15 @@ using AzVideoDownloader.Services.Fetch;
 namespace AzVideoDownloader.Services.Core
 {
     /// <summary>
-    /// Downloads videos using the selected video/audio formats and
-    /// reports download progress to the caller.
+    /// Downloads media using the selected formats and options, and reports
+    /// download progress to the caller.
     /// </summary>
     public class VideoDownloadService(YoutubeDL ytdl)
     {
         #region Fields
 
-        private const string DefaultFormatSelector = "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]";
+        private const string DefaultFormatSelector =
+            "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]";
 
         private readonly YoutubeDL _ytdl = ytdl;
 
@@ -35,7 +36,7 @@ namespace AzVideoDownloader.Services.Core
             _ytdl.OutputFolder = outputFolder;
             _ytdl.OutputFileTemplate = "%(title)s.%(ext)s";
 
-            var overrideOptions = BuildOverrideOptions(options, url);
+            var overrideOptions = BuildOverrideOptions(options);
 
             if (options.AudioOnly)
             {
@@ -66,41 +67,42 @@ namespace AzVideoDownloader.Services.Core
 
         #endregion
 
-        #region Format Selection
+        #region Format Resolution
 
         /// <summary>
-        /// Builds the yt-dlp format selector from the selected video/audio formats.
-        /// When the audio list is unavailable, the selected video is preserved and
-        /// yt-dlp is allowed to select the best available audio stream.
+        /// Resolves the video format selector from the selected video and
+        /// audio formats.
+        ///
+        /// When no video format is selected, the default selector is used.
+        /// When merging is disabled, only the selected video format is used.
+        /// When merging is enabled, the selected audio format is combined
+        /// with the video format when available; otherwise yt-dlp selects
+        /// the best available audio stream.
         /// </summary>
         private static string BuildVideoFormatSelector(
             GetAVFormatList? video,
             GetAVFormatList? audio,
             YtDlpOptions options)
         {
-            // No video was selected. Use the default fallback selector.
             if (video is null)
                 return DefaultFormatSelector;
 
-            // Download only the selected video format.
             if (!options.MergeAudioVideo)
                 return video.Source.FormatId;
 
-            // Both video and audio formats were explicitly selected.
             if (audio is not null)
                 return $"{video.Source.FormatId}+{audio.Source.FormatId}";
 
-            // The audio format list was unavailable or empty.
-            // Preserve the selected video and let yt-dlp choose the best audio.
             return $"{video.Source.FormatId}+ba";
         }
 
         /// <summary>
-        /// Maps the UI audio format to YoutubeDLSharp's AudioConversionFormat enum.
-        /// Falls back to the enum default when the requested format is not available
-        /// in the installed YoutubeDLSharp version.
+        /// Converts a UI audio format label to the corresponding
+        /// YoutubeDLSharp <see cref="AudioConversionFormat"/> value.
+        /// Falls back to the enum default when no matching value exists.
         /// </summary>
-        private static AudioConversionFormat ToAudioConversionFormat(string uiLabel)
+        private static AudioConversionFormat ToAudioConversionFormat(
+            string uiLabel)
         {
             var mapped = YtDlpAudioFormats.ToAudioFormatArg(uiLabel);
             var pascalCase = char.ToUpperInvariant(mapped[0]) + mapped[1..];
@@ -114,10 +116,12 @@ namespace AzVideoDownloader.Services.Core
         }
 
         /// <summary>
-        /// Maps the target container extension to YoutubeDLSharp's
-        /// DownloadMergeFormat enum.
+        /// Converts an output container extension to the corresponding
+        /// YoutubeDLSharp <see cref="DownloadMergeFormat"/> value.
+        /// Falls back to the enum default when no matching value exists.
         /// </summary>
-        private static DownloadMergeFormat ToMergeFormat(string containerExtension)
+        private static DownloadMergeFormat ToMergeFormat(
+            string containerExtension)
         {
             if (string.IsNullOrWhiteSpace(containerExtension))
                 return default;
@@ -139,16 +143,13 @@ namespace AzVideoDownloader.Services.Core
         #region Option Building
 
         /// <summary>
-        /// Builds the yt-dlp options used for the current download.
-        /// YouTube-specific extractor options are only applied to YouTube URLs.
+        /// Builds the yt-dlp options for the current download.
+        /// Includes the application-wide tool configuration and the
+        /// post-processing options selected by the user.
         /// </summary>
-        private static OptionSet BuildOverrideOptions(
-            YtDlpOptions options,
-            string url)
+        private static OptionSet BuildOverrideOptions(YtDlpOptions options)
         {
-            var overrideOptions = IsYouTubeUrl(url)
-                ? ToolManagerService.CreateYouTubeOverrideOptions()
-                : new OptionSet();
+            var overrideOptions = ToolManagerService.CreateOverrideOptions();
 
             ConfigurePostProcessingOptions(overrideOptions, options);
 
@@ -156,7 +157,7 @@ namespace AzVideoDownloader.Services.Core
         }
 
         /// <summary>
-        /// Applies thumbnail, metadata, subtitle and container options
+        /// Applies thumbnail, metadata, subtitle, and container options
         /// to the yt-dlp option set.
         /// </summary>
         private static void ConfigurePostProcessingOptions(
@@ -175,7 +176,7 @@ namespace AzVideoDownloader.Services.Core
         }
 
         /// <summary>
-        /// Configures subtitle writing and embedding for video downloads.
+        /// Configures subtitle download and embedding for video downloads.
         /// </summary>
         private static void ConfigureSubtitleOptions(
             OptionSet overrideOptions,
@@ -193,8 +194,9 @@ namespace AzVideoDownloader.Services.Core
         }
 
         /// <summary>
-        /// Configures remuxing when the output container is changed without
-        /// merging a separate audio stream.
+        /// Configures video remuxing when the requested output container
+        /// differs from the source container and no separate audio merge
+        /// is being performed.
         /// </summary>
         private static void ConfigureRemuxOptions(
             OptionSet overrideOptions,
@@ -208,19 +210,6 @@ namespace AzVideoDownloader.Services.Core
             }
 
             overrideOptions.RemuxVideo = options.TargetContainer;
-        }
-
-        #endregion
-
-        #region URL Helpers
-
-        /// <summary>
-        /// Determines whether the URL belongs to YouTube.
-        /// </summary>
-        private static bool IsYouTubeUrl(string url)
-        {
-            return url.Contains("youtube.com", StringComparison.OrdinalIgnoreCase)
-                || url.Contains("youtu.be", StringComparison.OrdinalIgnoreCase);
         }
 
         #endregion

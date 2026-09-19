@@ -5,27 +5,21 @@ using System.Windows.Media.Imaging;
 namespace AzVideoDownloader.Services.Fetch
 {
     /// <summary>
-    /// Downloads a thumbnail image and decodes it into a WPF-ready
-    /// <see cref="BitmapImage"/>. Downloading via HttpClient first (rather
-    /// than setting BitmapImage.UriSource directly) avoids blocking the UI
-    /// thread on the synchronous load that UriSource triggers.
+    /// Downloads video thumbnails and decodes them into WPF-compatible
+    /// <see cref="BitmapImage"/> instances.
     /// </summary>
     public sealed class GetVideoThumbnail
     {
-        #region Fields
-
         private static readonly HttpClient _httpClient = new();
-
-        #endregion
 
         #region Public API
 
         /// <summary>
-        /// Returns the decoded image, or null if the URL is empty or the
-        /// download/decode failed. Failures are swallowed intentionally -
-        /// a missing thumbnail should never interrupt the rest of the UI.
+        /// Downloads and decodes the thumbnail at the specified URL.
+        /// Returns <see langword="null"/> when the URL is empty or the
+        /// thumbnail cannot be downloaded or decoded.
         /// </summary>
-        public async Task<BitmapImage?> LoadAsync(string? url)
+        public static async Task<BitmapImage?> LoadAsync(string? url)
         {
             if (string.IsNullOrWhiteSpace(url))
                 return null;
@@ -35,7 +29,9 @@ namespace AzVideoDownloader.Services.Fetch
                 var bytes = await _httpClient.GetByteArrayAsync(url);
 
                 using var stream = new MemoryStream(bytes);
+
                 var bitmap = new BitmapImage();
+
                 bitmap.BeginInit();
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;
                 bitmap.StreamSource = stream;
