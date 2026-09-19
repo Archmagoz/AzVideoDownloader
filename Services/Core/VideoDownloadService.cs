@@ -144,14 +144,15 @@ namespace AzVideoDownloader.Services.Core
 
         /// <summary>
         /// Builds the yt-dlp options for the current download.
-        /// Includes the application-wide tool configuration and the
-        /// post-processing options selected by the user.
+        /// Includes the application-wide tool configuration, post-processing options,
+        /// and any download-range options selected by the user.
         /// </summary>
         private static OptionSet BuildOverrideOptions(YtDlpOptions options)
         {
             var overrideOptions = ToolManagerService.CreateOverrideOptions();
 
             ConfigurePostProcessingOptions(overrideOptions, options);
+            ConfigureDownloadRangeOptions(overrideOptions, options);
 
             return overrideOptions;
         }
@@ -173,6 +174,44 @@ namespace AzVideoDownloader.Services.Core
 
             ConfigureSubtitleOptions(overrideOptions, options);
             ConfigureRemuxOptions(overrideOptions, options);
+
+        }
+
+        /// <summary>
+        /// Configures the optional time range used to download only a portion
+        /// of the source media.
+        /// </summary>
+        private static void ConfigureDownloadRangeOptions(
+        OptionSet overrideOptions,
+        YtDlpOptions options)
+        {
+            if (!options.DownloadPartial ||
+            !options.DownloadStartSeconds.HasValue ||
+            !options.DownloadEndSeconds.HasValue)
+            {
+                return;
+            }
+
+            var start = FormatTimestamp(options.DownloadStartSeconds.Value);
+            var end = FormatTimestamp(options.DownloadEndSeconds.Value);
+
+            overrideOptions.AddCustomOption<string>(
+                "--download-sections",
+                $"*{start}-{end}");
+
+        }
+
+        /// <summary>
+        /// Converts a duration in seconds to the timestamp format expected by yt-dlp.
+        /// </summary>
+        private static string FormatTimestamp(double seconds)
+        {
+            var duration = TimeSpan.FromSeconds(seconds);
+
+            return duration.TotalHours >= 1
+                ? duration.ToString(@"hh\:mm\:ss")
+                : duration.ToString(@"mm\:ss");
+
         }
 
         /// <summary>
