@@ -16,6 +16,28 @@ namespace AzVideoDownloader.Models
 
         #endregion
 
+        #region Download Range
+
+        /// <summary>
+        /// Determines whether only a specific time range of the source video
+        /// should be downloaded.
+        /// </summary>
+        public bool DownloadPartial { get; set; }
+
+        /// <summary>
+        /// Gets or sets the start time of the requested download range.
+        /// The value is expressed in seconds from the beginning of the video.
+        /// </summary>
+        public double? DownloadStartSeconds { get; set; }
+
+        /// <summary>
+        /// Gets or sets the end time of the requested download range.
+        /// The value is expressed in seconds from the beginning of the video.
+        /// </summary>
+        public double? DownloadEndSeconds { get; set; }
+
+        #endregion
+
         #region Audio-Only Options
 
         /// <summary>
