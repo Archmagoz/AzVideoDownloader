@@ -22,7 +22,6 @@ namespace AzVideoDownloader
         // Services used by the UI to fetch metadata and execute downloads.
         private readonly YoutubeDL _ytdl = null!;
         private readonly GetVideoinfo _videoInfoService = null!;
-        private readonly GetVideoThumbnail _thumbnailService = new();
         private readonly VideoDownloadService _videoDownloadService = null!;
 
         // Duration of the current video, used for bitrate estimation.
@@ -64,8 +63,12 @@ namespace AzVideoDownloader
             }
             catch (FileNotFoundException ex)
             {
-                ShowPopupForced(ex.Message, "Az Video Downloader",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowPopupForced(
+                    ex.Message,
+                    "Az Video Downloader",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+
                 Application.Current.Shutdown();
                 return;
             }
