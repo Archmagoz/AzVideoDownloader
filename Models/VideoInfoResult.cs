@@ -3,8 +3,8 @@ using AzVideoDownloader.Services.Fetch;
 namespace AzVideoDownloader.Models
 {
     /// <summary>
-    /// Plain data returned by <see cref="GetVideoInfo"/>, decoupled from
-    /// both the raw yt-dlp <c>VideoData</c> shape and any UI controls.
+    /// Represents video metadata and available formats independently of the UI
+    /// and the underlying yt-dlp data model.
     /// </summary>
     public sealed class VideoInfoResult
     {

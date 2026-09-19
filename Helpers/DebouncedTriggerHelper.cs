@@ -3,11 +3,8 @@ using System.Windows.Threading;
 namespace AzVideoDownloader.Helpers
 {
     /// <summary>
-    /// Fires a callback either after a debounce delay (each call to
-    /// <see cref="Arm"/> restarts the countdown) or immediately via
-    /// <see cref="TriggerNow"/>, which cancels any pending debounce.
-    /// Wraps a <see cref="DispatcherTimer"/> so callers don't need to
-    /// manage Start/Stop/Tick bookkeeping themselves.
+    /// Provides debounced and immediate callback triggering through a
+    /// <see cref="DispatcherTimer"/>.
     /// </summary>
     public sealed class DebouncedTriggerHelper
     {
@@ -35,21 +32,27 @@ namespace AzVideoDownloader.Helpers
 
         #region Public API
 
-        /// <summary>(Re)starts the countdown. Repeated calls restart it.</summary>
+        /// <summary>
+        /// Starts or restarts the debounce countdown.
+        /// </summary>
         public void Arm()
         {
             _timer.Stop();
             _timer.Start();
         }
 
-        /// <summary>Cancels any pending countdown and fires the callback now.</summary>
+        /// <summary>
+        /// Cancels the debounce countdown and invokes the callback immediately.
+        /// </summary>
         public void TriggerNow()
         {
             _timer.Stop();
             _callback();
         }
 
-        /// <summary>Cancels a pending countdown without firing the callback.</summary>
+        /// <summary>
+        /// Cancels the debounce countdown without invoking the callback.
+        /// </summary>
         public void Cancel() => _timer.Stop();
 
         #endregion

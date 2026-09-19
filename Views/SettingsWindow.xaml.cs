@@ -8,8 +8,7 @@ namespace AzVideoDownloader
     {
         #region Fields
 
-        // Prevents setting changes from being persisted while the controls
-        // are being initialized from the stored application settings.
+        // Prevents setting changes from being persisted during initialization.
         private bool _isLoadingSettings;
 
         #endregion
@@ -28,7 +27,7 @@ namespace AzVideoDownloader
         #region Settings
 
         /// <summary>
-        /// Loads the persisted application settings and updates the UI.
+        /// Loads persisted settings into the UI.
         /// </summary>
         private void LoadSettings()
         {
@@ -46,7 +45,7 @@ namespace AzVideoDownloader
         }
 
         /// <summary>
-        /// Loads the persisted popup visibility setting into the UI.
+        /// Loads the persisted popup visibility setting.
         /// </summary>
         private void LoadPopupSetting()
         {
@@ -55,14 +54,12 @@ namespace AzVideoDownloader
         }
 
         /// <summary>
-        /// Loads the persisted theme setting and updates the dark mode toggle.
+        /// Loads the persisted theme and reflects the resolved theme in the UI.
         /// </summary>
         private void LoadThemeSetting()
         {
-            // Use the resolved theme rather than the persisted ThemeMode
-            // directly. This is important for System mode: when Windows is
-            // currently using dark mode, System resolves to Dark and the
-            // toggle should therefore appear checked.
+            // Use the resolved theme so System mode reflects the current
+            // Windows theme instead of the persisted mode itself.
             DarkModeToggle.IsChecked =
                 ThemeManager.CurrentThemeMode ==
                 ThemeManager.ThemeMode.Dark;
@@ -73,7 +70,7 @@ namespace AzVideoDownloader
         #region Theme
 
         /// <summary>
-        /// Handles enabling dark mode.
+        /// Enables dark mode.
         /// </summary>
         private void DarkModeToggle_Checked(
             object sender,
@@ -87,7 +84,7 @@ namespace AzVideoDownloader
         }
 
         /// <summary>
-        /// Handles disabling dark mode.
+        /// Enables light mode.
         /// </summary>
         private void DarkModeToggle_Unchecked(
             object sender,
@@ -105,7 +102,7 @@ namespace AzVideoDownloader
         #region Notifications
 
         /// <summary>
-        /// Handles changes to the application's popup visibility setting.
+        /// Updates and persists the popup visibility setting.
         /// </summary>
         private void PopupsToggle_Changed(
             object sender,
@@ -125,7 +122,7 @@ namespace AzVideoDownloader
         #region Window Actions
 
         /// <summary>
-        /// Closes the settings window without performing any additional actions.
+        /// Closes the settings window.
         /// </summary>
         private void CloseButton_Click(
             object sender,

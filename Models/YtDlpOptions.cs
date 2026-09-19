@@ -1,100 +1,120 @@
 namespace AzVideoDownloader.Models
 {
     /// <summary>
-    /// Plain snapshot of the yt-dlp-related UI state (checkboxes, combos,
-    /// selected format IDs), consumed by YtDlpArgumentBuilderService.
+    /// Represents the yt-dlp options selected through the application UI.
+    /// This model is independent of UI controls and is consumed by
+    /// <see cref="YtDlpArgumentBuilderService"/> when constructing arguments.
     /// </summary>
     public sealed class YtDlpOptions
     {
         #region Mode
-
-        /// <summary>Extract audio only (yt-dlp -x), instead of downloading video.</summary>
+        /// <summary>
+        /// Determines whether only audio is extracted instead of downloading
+        /// a video stream.
+        /// </summary>
         public bool AudioOnly { get; set; }
 
         #endregion
 
-        #region Audio-Only Path
+        #region Audio-Only Options
 
         /// <summary>
-        /// UI-facing audio container/extension, e.g. "mp3", "m4a", "opus",
-        /// "wav", "flac", "aac", or "ogg". This is what the "Alterar extensão
-        /// de saída" combo shows when AudioOnly is checked. Translate it to
-        /// the value yt-dlp's --audio-format actually expects via
-        /// <see cref="YtDlpAudioFormats.ToAudioFormatArg"/> before building
-        /// arguments — "ogg" is NOT a valid --audio-format value by itself,
-        /// it maps to "vorbis" (yt-dlp/ffmpeg produce a .ogg file when asked
-        /// for the vorbis codec).
+        /// Gets or sets the output audio extension selected by the user.
+        /// The value is converted to the corresponding yt-dlp
+        /// <c>--audio-format</c> argument before command construction.
         /// </summary>
         public string AudioFormat { get; set; } = "mp3";
 
         /// <summary>
-        /// Optional --audio-quality value (0 = best VBR .. 10 = worst, or a
-        /// fixed bitrate like "192K"). Null/empty means "don't pass the flag,
-        /// let yt-dlp use its own default".
+        /// Gets or sets the requested audio quality.
+        /// Supports yt-dlp quality values such as VBR levels (0-10) or
+        /// fixed bitrates such as <c>192K</c>. A null or empty value leaves
+        /// audio quality selection to yt-dlp.
         /// </summary>
         public string? AudioQuality { get; set; }
 
         #endregion
 
-        #region Video Path
+        #region Video Options
 
-        /// <summary>Selected video format id from VideoFormatListBox (e.g. "137").</summary>
+        /// <summary>
+        /// Gets or sets the selected video format ID.
+        /// </summary>
         public string? VideoFormatId { get; set; }
 
-        /// <summary>Selected audio format id from AudioFormatListBox (e.g. "140").</summary>
+        /// <summary>
+        /// Gets or sets the selected audio format ID.
+        /// </summary>
         public string? AudioFormatId { get; set; }
 
-        /// <summary>Mux the selected video+audio formats into one file.</summary>
+        /// <summary>
+        /// Determines whether the selected video and audio formats should
+        /// be merged into a single output file.
+        /// </summary>
         public bool MergeAudioVideo { get; set; }
 
-        /// <summary>Whether the output container extension differs from the source.</summary>
+        /// <summary>
+        /// Determines whether the output container should differ from the
+        /// source container.
+        /// </summary>
         public bool ChangeExtension { get; set; }
 
-        /// <summary>Desired video container when <see cref="ChangeExtension"/> is true (mp4/mkv/mov/webm).</summary>
+        /// <summary>
+        /// Gets or sets the requested output container when
+        /// <see cref="ChangeExtension"/> is enabled.
+        /// </summary>
         public string TargetContainer { get; set; } = "mp4";
 
-        /// <summary>Source container, used when <see cref="ChangeExtension"/> is false.</summary>
+        /// <summary>
+        /// Gets or sets the source container used when the output container
+        /// is not being changed.
+        /// </summary>
         public string SourceContainer { get; set; } = "mp4";
 
-        /// <summary>Effective video output container, taking ChangeExtension into account.</summary>
+        /// <summary>
+        /// Gets the container that should be used for the final output.
+        /// </summary>
         public string EffectiveContainer =>
             ChangeExtension ? TargetContainer : SourceContainer;
 
         #endregion
 
-        #region Shared Postprocessing Flags
+        #region Postprocessing Options
 
-        /// <summary>--embed-thumbnail.</summary>
+        /// <summary>
+        /// Determines whether the thumbnail should be embedded into the
+        /// output file when supported by the selected format.
+        /// </summary>
         public bool EmbedThumbnail { get; set; }
 
-        /// <summary>--embed-metadata.</summary>
+        /// <summary>
+        /// Determines whether metadata should be embedded into the output file.
+        /// </summary>
         public bool EmbedMetadata { get; set; }
 
-        /// <summary>--write-subs --embed-subs. Ignored when AudioOnly is set.</summary>
+        /// <summary>
+        /// Determines whether subtitles should be downloaded and embedded.
+        /// This option is ignored when <see cref="AudioOnly"/> is enabled.
+        /// </summary>
         public bool EmbedSubtitles { get; set; }
 
-        /// <summary>--sub-langs value, e.g. "en.*,pt.*". Null/empty means "all".</summary>
+        /// <summary>
+        /// Gets or sets the subtitle language filter passed to yt-dlp.
+        /// An empty value allows yt-dlp to select all available subtitle languages.
+        /// </summary>
         public string? SubtitleLangs { get; set; }
 
         #endregion
     }
 
     /// <summary>
-    /// Maps the UI-facing audio extension labels to the values yt-dlp's
-    /// --audio-format actually accepts, and flags formats that don't
-    /// reliably support an embedded cover picture.
+    /// Provides the audio format labels exposed by the UI and converts them
+    /// to the corresponding yt-dlp format arguments.
     /// </summary>
     public static class YtDlpAudioFormats
     {
         #region Constants
 
-        /// <summary>
-        /// yt-dlp doesn't have a literal "ogg" format: asking for the
-        /// vorbis codec is what produces a .ogg file, so "ogg" is the only
-        /// UI label that needs aliasing before reaching --audio-format.
-        /// Every other supported label already matches yt-dlp's own value
-        /// (case aside), so no full lookup table is needed.
-        /// </summary>
         private const string OggUiLabel = "ogg";
         private const string OggYtDlpFormat = "vorbis";
 
@@ -103,25 +123,29 @@ namespace AzVideoDownloader.Models
         #region Lookup Data
 
         /// <summary>
-        /// The list to feed ChangeExtensionComboBox / an audio-format combo
-        /// when the UI is in audio-only mode. Order is just a sensible
-        /// popularity-based default; reorder freely.
+        /// Gets the audio format labels available in the audio-only UI.
         /// </summary>
         public static readonly string[] UiSelectableLabels =
             ["mp3", "m4a", "opus", "ogg", "flac", "wav", "aac"];
 
         /// <summary>
-        /// Audio formats whose container doesn't reliably support an
-        /// embedded cover picture, so --embed-thumbnail should be skipped
-        /// for them rather than passed through and left to fail/warn.
+        /// Gets the audio formats that do not reliably support embedded
+        /// thumbnail artwork.
         /// </summary>
         private static readonly HashSet<string> ThumbnailIncompatible =
-            new(StringComparer.OrdinalIgnoreCase) { "wav" };
+            new(StringComparer.OrdinalIgnoreCase)
+            {
+            "wav"
+            };
 
         #endregion
 
         #region Public API
 
+        /// <summary>
+        /// Converts a UI audio format label to the value expected by
+        /// yt-dlp's <c>--audio-format</c> option.
+        /// </summary>
         public static string ToAudioFormatArg(string uiLabel)
         {
             if (string.IsNullOrWhiteSpace(uiLabel))
@@ -134,6 +158,10 @@ namespace AzVideoDownloader.Models
                 : uiLabel.ToLowerInvariant();
         }
 
+        /// <summary>
+        /// Determines whether the specified audio format supports reliable
+        /// embedded thumbnail artwork.
+        /// </summary>
         public static bool SupportsEmbeddedThumbnail(string uiLabel) =>
             !ThumbnailIncompatible.Contains(uiLabel);
 
@@ -141,22 +169,15 @@ namespace AzVideoDownloader.Models
     }
 
     /// <summary>
-    /// UI-facing video container labels, consumed by the "Alterar extensão
-    /// de saída" combo when AudioOnly is unchecked. Unlike
-    /// <see cref="YtDlpAudioFormats"/>, there's no label-to-yt-dlp-value
-    /// mapping needed here: <see cref="YtDlpOptions.TargetContainer"/> is
-    /// already the raw value yt-dlp expects for both --remux-video and the
-    /// merge format (parsed into <c>DownloadMergeFormat</c> downstream in
-    /// VideoDownloadService.ToMergeFormat).
+    /// Provides the video container labels exposed by the UI and validates
+    /// container values before they are passed to yt-dlp.
     /// </summary>
     public static class YtDlpVideoFormats
     {
         #region Lookup Data
 
         /// <summary>
-        /// The list to feed ChangeExtensionComboBox / a container combo
-        /// when the UI is in video mode. Order is just a sensible
-        /// popularity-based default; reorder freely.
+        /// Gets the video container labels available in the video UI.
         /// </summary>
         public static readonly string[] UiSelectableLabels =
             ["mp4", "mkv", "mov", "webm"];
@@ -166,14 +187,14 @@ namespace AzVideoDownloader.Models
         #region Public API
 
         /// <summary>
-        /// Guards against a stale/typo'd container value reaching yt-dlp
-        /// (e.g. a leftover setting from a previous app version, or manual
-        /// tampering with a saved profile). Callers should fall back to a
-        /// safe default such as "mp4" when this returns false.
+        /// Determines whether the specified container extension is supported
+        /// by the application.
         /// </summary>
         public static bool IsValid(string containerExtension) =>
             !string.IsNullOrWhiteSpace(containerExtension)
-                && UiSelectableLabels.Contains(containerExtension, StringComparer.OrdinalIgnoreCase);
+                && UiSelectableLabels.Contains(
+                    containerExtension,
+                    StringComparer.OrdinalIgnoreCase);
 
         #endregion
     }
