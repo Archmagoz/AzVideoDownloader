@@ -3,6 +3,7 @@ using System.Windows.Controls;
 
 using YoutubeDLSharp;
 
+using AzVideoDownloader.Helpers;
 using AzVideoDownloader.Models;
 using AzVideoDownloader.Services.Fetch;
 
@@ -298,7 +299,7 @@ namespace AzVideoDownloader
             var items = ChangeExtensionComboBox.Items.Cast<ComboBoxItem>().ToList();
 
             ChangeExtensionComboBox.SelectedItem =
-                items.FirstOrDefault(item => EqualsIgnoreCase((string)item.Content, preferredDefault))
+                items.FirstOrDefault(item => ((string)item.Content).EqualsIgnoreCase(preferredDefault))
                 ?? items.FirstOrDefault();
         }
 

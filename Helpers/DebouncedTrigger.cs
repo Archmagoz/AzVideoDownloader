@@ -6,7 +6,7 @@ namespace AzVideoDownloader.Helpers
     /// Provides debounced and immediate callback triggering through a
     /// <see cref="DispatcherTimer"/>.
     /// </summary>
-    public sealed class DebouncedTriggerHelper
+    public sealed class DebouncedTrigger
     {
         #region Fields
 
@@ -17,7 +17,7 @@ namespace AzVideoDownloader.Helpers
 
         #region Constructor
 
-        public DebouncedTriggerHelper(TimeSpan delay, Action callback)
+        public DebouncedTrigger(TimeSpan delay, Action callback)
         {
             _callback = callback;
             _timer = new DispatcherTimer { Interval = delay };

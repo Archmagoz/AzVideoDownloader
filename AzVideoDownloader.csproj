@@ -78,6 +78,12 @@
     <Compile Update="Views\MainWindow.PartialDownload.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </Compile>
-</ItemGroup>
+    <Compile Update="Views\MainWindow.LinkInput.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Update="Views\SettingsWindow.cs">
+      <DependentUpon>SettingsWindow.xaml</DependentUpon>
+    </Compile>
+  </ItemGroup>
 
 </Project>

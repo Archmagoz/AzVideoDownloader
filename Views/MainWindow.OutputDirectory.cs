@@ -4,6 +4,8 @@ using System.Windows.Controls;
 
 using Microsoft.Win32;
 
+using AzVideoDownloader.Helpers;
+
 namespace AzVideoDownloader
 {
     /// <summary>
@@ -53,7 +55,7 @@ namespace AzVideoDownloader
 
             // Rebuild the ComboBox only when the order is out of sync with the history.
             if (OutputDir.Items.Count > 0 &&
-                !EqualsIgnoreCase(OutputDir.Items[0] as string, directory))
+                !(OutputDir.Items[0] as string).EqualsIgnoreCase(directory))
             {
                 PopulateRecentOutputDirectories(directories);
                 OutputDir.SelectedItem = directory;
@@ -125,7 +127,7 @@ namespace AzVideoDownloader
         /// </summary>
         private static List<string> MoveToFront(List<string> directories, string directory)
         {
-            directories.RemoveAll(path => EqualsIgnoreCase(path, directory));
+            directories.RemoveAll(path => path.EqualsIgnoreCase(directory));
             directories.Insert(0, directory);
 
             return directories;
