@@ -11,9 +11,9 @@
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <FileVersion>1.2.0</FileVersion>
-    <AssemblyVersion>1.2.0</AssemblyVersion>
-    <Version>1.2.0</Version>
+    <FileVersion>1.2.1</FileVersion>
+    <AssemblyVersion>1.2.1</AssemblyVersion>
+    <Version>1.2.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -60,6 +60,30 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Views\MainWindow.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Update="Views\MainWindow.Download.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Update="Views\MainWindow.VideoInfo.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Update="Views\MainWindow.OutputDirectory.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Update="Views\MainWindow.PartialDownload.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Update="Views\MainWindow.LinkInput.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Update="Views\SettingsWindow.cs">
+      <DependentUpon>SettingsWindow.xaml</DependentUpon>
+    </Compile>
   </ItemGroup>
 
 </Project>
