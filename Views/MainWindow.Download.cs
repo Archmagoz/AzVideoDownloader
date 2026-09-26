@@ -177,6 +177,7 @@ namespace AzVideoDownloader
             LinkInputPanel.IsEnabled = !isDownloading;
             OutputDirPanel.IsEnabled = !isDownloading;
             FormatSelectionCard.IsEnabled = !isDownloading;
+            OptionsPanel.IsEnabled = !isDownloading;
         }
 
         /// <summary>

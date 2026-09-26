@@ -198,7 +198,8 @@
 
                     <!-- Keeps the options area scrollable while the Download button
                          remains pinned below it. -->
-                    <ScrollViewer Grid.Row="1"
+                    <ScrollViewer x:Name="OptionsPanel"
+                                  Grid.Row="1"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>

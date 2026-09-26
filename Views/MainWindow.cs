@@ -29,8 +29,9 @@ namespace AzVideoDownloader
 
         public MainWindow()
         {
-            ApplySavedTheme();
             InitializeComponent();
+
+            ApplySavedTheme();
             LoadRecentOutputDirectories();
 
             // Initialize bundled tools before creating the YoutubeDL instance.
