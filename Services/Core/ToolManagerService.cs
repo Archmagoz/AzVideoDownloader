@@ -79,6 +79,7 @@ namespace AzVideoDownloader.Services.Core
         ///   different player clients.
         /// - Firefox cookies to allow yt-dlp to reuse the user's authenticated
         ///   browser session when accessing content that requires it.
+        /// - A higher number of concurrent fragments to improve download speed
         ///
         /// These options are added as custom options because YoutubeDLSharp's
         /// OptionSet does not expose strongly typed properties for them.
@@ -93,11 +94,15 @@ namespace AzVideoDownloader.Services.Core
 
             options.AddCustomOption<string>(
                 "--extractor-args",
-                "youtube:player-client=web_embedded");
+                "youtube:player-client=default,web_embedded");
 
             options.AddCustomOption<string>(
                 "--cookies-from-browser",
                 "firefox");
+
+            options.AddCustomOption<int>(
+                "--concurrent-fragments",
+                8);
 
             return options;
         }
