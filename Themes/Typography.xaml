@@ -10,7 +10,7 @@
          can never resolve to any other Roboto weight sharing the same
          internal family name. No fallback family, no weight switching -
          every style below points to this single resource. -->
-        <FontFamily x:Key="AppFontFamily">pack://application:,,,/Fonts/Roboto-SemiBold.ttf#Roboto SemiBold</FontFamily>
+        <FontFamily x:Key="AppFontFamily">pack://application:,,,/Assets/Fonts/Roboto-SemiBold.ttf#Roboto SemiBold</FontFamily>
 
         <!-- ==================================================== -->
         <!--  TYPOGRAPHY SCALE                                    -->
