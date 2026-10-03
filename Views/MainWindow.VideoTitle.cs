@@ -14,13 +14,17 @@ namespace AzVideoDownloader
     /// </summary>
     public partial class MainWindow
     {
+        // Text shown when no video is loaded. VideoTitleText_TextChanged treats this exact
+        // value as "no title", so it must match what ResetToDefaultState writes
+        // (MainWindow.VideoInfo.cs).
         private const string TitlePlaceholder = "—";
         private const string TitleEditToolTip = "Clique para editar o nome do arquivo";
 
         // Title reported by yt-dlp. Null when no video is loaded.
         private string? _fetchedTitle;
 
-        // Sanitized name typed by the user. Null means "use the yt-dlp default name".
+        // Sanitized name typed by the user, used as the output file name.
+        // Null means "use the yt-dlp default name".
         private string? _customFileName;
 
         private bool _isEditingTitle;
@@ -39,7 +43,7 @@ namespace AzVideoDownloader
         /// <summary>
         /// Starts observing VideoTitleText.Text. Any change not made by this class is treated
         /// as a newly loaded title, so the fetch code does not need to know about the edit
-        /// feature. Must be called once, right after InitializeComponent.
+        /// feature. Must be called once, after InitializeComponent.
         /// </summary>
         private void InitializeTitleTracking()
         {
@@ -63,6 +67,7 @@ namespace AzVideoDownloader
 
             var text = VideoTitleText.Text;
 
+            // The placeholder means "no video loaded", not a real title.
             _fetchedTitle =
                 string.IsNullOrWhiteSpace(text) || text == TitlePlaceholder
                     ? null
@@ -75,7 +80,7 @@ namespace AzVideoDownloader
 
         #endregion
 
-        #region Public API
+        #region Title State
 
         /// <summary>
         /// Sets the title reported by yt-dlp and discards any previous user edit.
@@ -96,8 +101,8 @@ namespace AzVideoDownloader
         /// <summary>
         /// Updates the affordances of the title (hand cursor and tooltip) according to
         /// <see cref="CanEditTitle"/>. The control itself stays enabled so the text keeps
-        /// its normal appearance while a download is running; the click handler and
-        /// <see cref="BeginTitleEdit"/> enforce the lock.
+        /// its normal appearance while a download is running; <see cref="BeginTitleEdit"/>
+        /// enforces the lock.
         /// </summary>
         private void UpdateTitleEditability()
         {
@@ -136,6 +141,10 @@ namespace AzVideoDownloader
         private void VideoTitleEditor_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e) =>
             EndTitleEdit(commit: true);
 
+        /// <summary>
+        /// Switches the title to its inline editor. Does nothing unless
+        /// <see cref="CanEditTitle"/> allows it; this is where the download lock is enforced.
+        /// </summary>
         private void BeginTitleEdit()
         {
             if (!CanEditTitle || _isEditingTitle)
@@ -179,6 +188,7 @@ namespace AzVideoDownloader
         /// <summary>
         /// Sanitizes the typed name and stores it as the output name. An empty result or a
         /// name equal to the fetched title reverts to the default yt-dlp behavior.
+        /// The displayed title is then refreshed, so the user sees the sanitized value.
         /// </summary>
         private void ApplyEditedTitle(string rawTitle)
         {
@@ -198,7 +208,8 @@ namespace AzVideoDownloader
         }
 
         /// <summary>
-        /// Writes the title to the UI. Guarded so the change notification is ignored
+        /// Writes the displayed title: the custom name if set, otherwise the fetched title,
+        /// otherwise the placeholder. Guarded so the change notification is ignored
         /// by <see cref="VideoTitleText_TextChanged"/>.
         /// </summary>
         private void RefreshTitleDisplay()

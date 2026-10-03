@@ -16,13 +16,15 @@ namespace AzVideoDownloader
         private CancellationTokenSource? _fetchCts;
 
         // Duration of the current video, used for bitrate estimation and range validation.
+        // Null when unknown or when no video is loaded.
         private double? _currentVideoDurationSeconds;
 
         #region Video Info Fetch
 
         /// <summary>
         /// Fetches video metadata and thumbnail, then updates the UI.
-        /// Only the most recent request is allowed to update the UI.
+        /// Only the most recent request is allowed to update the UI: every await is
+        /// followed by a cancellation check so a superseded request exits silently.
         /// </summary>
         private async Task FetchVideoInfoAsync(string url)
         {
@@ -44,6 +46,7 @@ namespace AzVideoDownloader
             {
                 var info = await _videoInfoService.FetchAsync(url, cts.Token);
 
+                // Superseded while awaiting: the newer request owns the UI now.
                 if (cts.Token.IsCancellationRequested)
                     return;
 
@@ -53,10 +56,12 @@ namespace AzVideoDownloader
                     return;
                 }
 
+                // Text details and formats are shown first; the thumbnail may arrive later.
                 ApplyVideoInfo(info);
 
                 var thumbnail = await GetVideoThumbnail.LoadAsync(info.ThumbnailUrl);
 
+                // The thumbnail load is not cancellable, so re-check before touching the UI.
                 if (!cts.Token.IsCancellationRequested)
                 {
                     ThumbPreview.Source = thumbnail;
@@ -72,17 +77,23 @@ namespace AzVideoDownloader
             }
             catch (Exception)
             {
-                // Treat unresolved links as an empty metadata state.
+                // Any failure (e.g. an unsupported or unresolvable link) is treated as
+                // "no metadata". Errors are intentionally not shown while the user types.
                 if (!cts.Token.IsCancellationRequested)
                     ResetToDefaultState();
             }
             finally
             {
+                // A superseded request must not clear the loading state of its successor.
                 if (!cts.Token.IsCancellationRequested)
                     SetFetchingState(false);
             }
         }
 
+        /// <summary>
+        /// Shows the fetched metadata and available formats, and resets the partial
+        /// download range to the full video (0 to duration, or 0 to 0 when unknown).
+        /// </summary>
         private void ApplyVideoInfo(VideoInfoResult info)
         {
             _currentVideoDurationSeconds = info.DurationSeconds;
@@ -112,7 +123,7 @@ namespace AzVideoDownloader
 
         /// <summary>
         /// Returns the first format matching the preferred container, or the first
-        /// available format when no match exists.
+        /// available format when no match exists. Returns null for an empty list.
         /// </summary>
         private static GetAVFormatList? SelectPreferredFormat(
             IReadOnlyList<GetAVFormatList> formats,
@@ -129,6 +140,10 @@ namespace AzVideoDownloader
                    ?? formats[0];
         }
 
+        /// <summary>
+        /// Toggles the loading indicators and the download button while metadata is fetched.
+        /// Starting a fetch also clears the format lists so stale formats cannot be selected.
+        /// </summary>
         private void SetFetchingState(bool isFetching)
         {
             var loadingVisibility =
@@ -136,7 +151,8 @@ namespace AzVideoDownloader
                     ? Visibility.Visible
                     : Visibility.Collapsed;
 
-            // The button must stay enabled while downloading so the user can still cancel.
+            // Disabled during a fetch, except while a download is running:
+            // in that state the button is the cancel control and must stay clickable.
             DownloadButton.IsEnabled = !isFetching || _downloadCts is not null;
 
             ThumbPlaceholderText.Text =
@@ -214,6 +230,7 @@ namespace AzVideoDownloader
                     ? $"{format.Width}x{format.Height}"
                     : "—";
 
+            // Fall back to the extractor's estimate when the exact size is not reported.
             var sizeBytes = format.FileSize ?? format.ApproximateFileSize;
 
             VideoSizeText.Text =
@@ -221,7 +238,7 @@ namespace AzVideoDownloader
                     ? $"{sizeBytes.Value / 1024.0 / 1024.0:0.#} MB"
                     : "—";
 
-            // Estimate bitrate from file size and duration.
+            // Estimated from the format's size and the video duration, hence "(aprox.)".
             VideoBitrateText.Text =
                 sizeBytes.HasValue && _currentVideoDurationSeconds is > 0
                     ? $"{sizeBytes.Value * 8 / _currentVideoDurationSeconds.Value / 1000:0} kbps (aprox.)"

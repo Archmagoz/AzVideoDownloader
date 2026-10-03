@@ -17,9 +17,12 @@ namespace AzVideoDownloader.Helpers
 
         private const char ReplacementChar = '_';
 
+        // Characters NTFS forbids in a path component. Control characters are
+        // also invalid but are detected separately in Sanitize.
         private static readonly char[] InvalidChars = "<>:\"/\\|?*".ToCharArray();
 
-        // Includes the superscript variants (COM¹, COM², COM³...) that Windows also reserves.
+        // Device names Windows reserves, with or without an extension.
+        // Includes the superscript digit variants (COM¹, COM², COM³, LPT¹...) that Windows also reserves.
         private static readonly HashSet<string> ReservedNames =
             new(StringComparer.OrdinalIgnoreCase)
             {
@@ -31,6 +34,8 @@ namespace AzVideoDownloader.Helpers
         /// <summary>
         /// Returns a Windows-safe base file name, or an empty string when nothing usable remains
         /// (callers should then fall back to their default name).
+        /// Invalid and control characters are replaced (not removed), the result is truncated
+        /// to <see cref="MaxLength"/>, and a reserved device name is prefixed with an underscore.
         /// </summary>
         public static string Sanitize(string? name)
         {
@@ -62,7 +67,8 @@ namespace AzVideoDownloader.Helpers
                 return string.Empty;
 
             // Windows reserves the device name even when an extension follows ("CON.mp4"),
-            // so only the segment before the first dot is compared.
+            // so only the segment before the first dot is compared. Trailing spaces are
+            // trimmed because Windows ignores them ("CON .mp4" is also reserved).
             var firstSegment = sanitized.Split('.')[0].TrimEnd(' ');
 
             return ReservedNames.Contains(firstSegment)

@@ -21,7 +21,7 @@ namespace AzVideoDownloader
         // Tag value that switches DownloadButton to its red "CANCELAR" state (see MainWindow.xaml).
         private const string DownloadingButtonState = "Downloading";
 
-        // Container extensions available for video and audio-only downloads.
+        // Container extensions offered in the UI for video and audio-only downloads.
         private static readonly string[] VideoContainerExtensions = YtDlpVideoFormats.UiSelectableLabels;
         private static readonly string[] AudioContainerExtensions = YtDlpAudioFormats.UiSelectableLabels;
 
@@ -45,6 +45,11 @@ namespace AzVideoDownloader
             await StartDownloadAsync();
         }
 
+        /// <summary>
+        /// Validates the user input, runs the download and reports the outcome.
+        /// The UI is always restored to its idle state when the download ends,
+        /// whether it succeeds, fails or is cancelled.
+        /// </summary>
         private async Task StartDownloadAsync()
         {
             if (string.IsNullOrWhiteSpace(InputLink.Text))
@@ -169,7 +174,7 @@ namespace AzVideoDownloader
         /// </summary>
         private void SetDownloadingState(bool isDownloading)
         {
-            // Switches DownloadButton between "BAIXAR" and the red "CANCELAR" (see MainWindow.xaml).
+            // Drives the DownloadButton style trigger (see DownloadingButtonState).
             DownloadButton.Tag = isDownloading ? DownloadingButtonState : null;
 
             // The button is always clickable: it either starts or cancels a download.
@@ -224,7 +229,7 @@ namespace AzVideoDownloader
                 DownloadStartSeconds = startSeconds,
                 DownloadEndSeconds = endSeconds,
 
-                // Null keeps the default yt-dlp name; otherwise the sanitized user-defined name is used.
+                // Null keeps the default yt-dlp name; otherwise the user-defined name is used.
                 OutputFileName = _customFileName
             };
 

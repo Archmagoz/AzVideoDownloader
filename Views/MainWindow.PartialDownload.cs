@@ -19,7 +19,7 @@ namespace AzVideoDownloader
         // so the largest representable value is 99:59:59.
         private const int MaxTimestampHours = 99;
 
-        // 99:59:59 expressed in seconds (99 * 3600 + 59 * 60 + 59).
+        // Largest representable timestamp (99:59:59).
         private static readonly TimeSpan MaxTimestamp = new(MaxTimestampHours, 59, 59);
 
         /// <summary>
@@ -39,6 +39,7 @@ namespace AzVideoDownloader
         /// </summary>
         private void DownloadTimestampTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
+            // Always handled: the text is rendered manually by SetTimestampDigits.
             e.Handled = true;
 
             if (sender is not TextBox textBox)
@@ -51,7 +52,9 @@ namespace AzVideoDownloader
         }
 
         /// <summary>
-        /// Handles deletion by shifting the timestamp digits toward zero.
+        /// Handles Backspace and Delete by shifting the timestamp digits one position toward
+        /// zero (the last digit is dropped and a leading zero is inserted). Both keys behave
+        /// the same, regardless of caret position.
         /// </summary>
         private void DownloadTimestampTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
@@ -64,6 +67,7 @@ namespace AzVideoDownloader
 
         /// <summary>
         /// Replaces the timestamp with the last six digits found in the pasted text.
+        /// Pasted text without any digit leaves the current value unchanged.
         /// </summary>
         private void DownloadTimestampTextBox_Pasting(object sender, DataObjectPastingEventArgs e)
         {
@@ -106,6 +110,8 @@ namespace AzVideoDownloader
 
         /// <summary>
         /// Gets the normalized six-digit representation of a timestamp TextBox.
+        /// Prefers the digits cached in Tag and falls back to parsing the displayed text
+        /// when Tag is missing or malformed (e.g. before the first focus).
         /// </summary>
         private static string GetTimestampDigits(TextBox textBox)
         {
@@ -170,7 +176,8 @@ namespace AzVideoDownloader
 
         /// <summary>
         /// Builds the partial download range from the current UI values.
-        /// Returns false when the values are invalid or outside the video duration.
+        /// Returns false when either timestamp is malformed, the end is not after the start,
+        /// or the end exceeds the video duration (when the duration is known).
         /// </summary>
         private bool TryGetDownloadRange(out double startSeconds, out double endSeconds)
         {

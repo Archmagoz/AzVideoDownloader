@@ -5,6 +5,8 @@ namespace AzVideoDownloader.Services.Fetch
     /// <summary>
     /// Provides a display-friendly representation of a yt-dlp format while
     /// preserving the original <see cref="FormatData"/> for later processing.
+    /// The UI binds to <see cref="Display"/>; the download logic reads the
+    /// underlying format through <see cref="Source"/> or <see cref="FormatId"/>.
     /// </summary>
     public sealed class GetAVFormatList(FormatData source, string display)
     {
@@ -31,6 +33,8 @@ namespace AzVideoDownloader.Services.Fetch
 
         /// <summary>
         /// Creates a display model for a video format.
+        /// The label has the form "{format} {fps}fps · {extension} · {size}"; the frame
+        /// rate is omitted when unknown.
         /// </summary>
         public static GetAVFormatList ForVideo(FormatData format)
         {
@@ -49,6 +53,7 @@ namespace AzVideoDownloader.Services.Fetch
 
         /// <summary>
         /// Creates a display model for an audio format.
+        /// The label has the form "{format} · {extension} · {size}".
         /// </summary>
         public static GetAVFormatList ForAudio(FormatData format)
         {
@@ -66,7 +71,9 @@ namespace AzVideoDownloader.Services.Fetch
         #region Private Helpers
 
         /// <summary>
-        /// Formats a byte count as a human-readable megabyte value.
+        /// Formats a byte count as a human-readable megabyte value (1 MB = 1024 * 1024 bytes).
+        /// Returns a placeholder when the size is unknown or zero. The exact file size is
+        /// preferred by the callers, with the extractor's estimate as a fallback.
         /// </summary>
         private static string FormatSize(long? bytes)
         {

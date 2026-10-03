@@ -14,7 +14,7 @@ namespace AzVideoDownloader
         // Delay before fetching video information after the link input changes.
         private static readonly TimeSpan LinkDebounceDelay = TimeSpan.FromMilliseconds(700);
 
-        // Prevents a metadata fetch from being triggered on every keystroke.
+        // Coalesces rapid input changes so a metadata fetch is not started on every keystroke.
         // Assigned in the constructor, which may return early when the bundled tools
         // cannot be extracted (the app shuts down), hence the null! initializer.
         private readonly DebouncedTrigger _linkDebounce = null!;
@@ -41,7 +41,8 @@ namespace AzVideoDownloader
         {
             if (string.IsNullOrWhiteSpace(InputLink.Text))
             {
-                // Clear the UI immediately when the link is empty.
+                // Clear the UI immediately when the link is empty: drop any pending
+                // debounce and abort an in-flight fetch so stale results are not shown.
                 _linkDebounce.Cancel();
                 _fetchCts?.Cancel();
                 ResetToDefaultState();
@@ -51,6 +52,8 @@ namespace AzVideoDownloader
             _linkDebounce.Arm();
         }
 
+        // Fire-and-forget: FetchVideoInfoAsync is expected to handle its own errors,
+        // since nothing observes the returned task here.
         private void OnLinkDebounceElapsed() =>
             _ = FetchVideoInfoAsync(InputLink.Text.Trim());
     }

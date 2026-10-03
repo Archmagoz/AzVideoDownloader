@@ -13,17 +13,17 @@ using static AzVideoDownloader.Helpers.UserNotification;
 namespace AzVideoDownloader
 {
     /// <summary>
-    /// Main application window. All UI event handlers are wired in MainWindow.xaml.
-    /// This part holds the application title, the services and the constructor.
-    /// Feature-specific code lives in MainWindow.LinkInput.cs, MainWindow.VideoInfo.cs,
+    /// Main application window. UI event handlers are wired in MainWindow.xaml.
+    /// This partial holds the application title, the shared services and the constructor.
+    /// Feature-specific code lives in MainWindows.[Feature] e.g. MainWindow.Download.cs.
     /// MainWindow.OutputDirectory.cs, MainWindow.PartialDownload.cs and MainWindow.Download.cs.
     /// </summary>
     public partial class MainWindow : Window
     {
         public const string AppTitle = "Az Video Downloader";
 
-        // Initialized with null! because the constructor may return early
-        // when the bundled tools cannot be extracted (the app shuts down).
+        // Initialized with null! because the constructor returns early (and the app
+        // shuts down) when the bundled tools cannot be extracted.
         private readonly GetVideoinfo _videoInfoService = null!;
         private readonly VideoDownloadService _videoDownloadService = null!;
 
@@ -35,8 +35,8 @@ namespace AzVideoDownloader
             LoadRecentOutputDirectories();
             InitializeTitleTracking();
 
-            // Initialize bundled tools before creating the YoutubeDL instance.
-            // Keeping this here allows tool extraction failures to be reported to the UI.
+            // The bundled tools (yt-dlp, ffmpeg) must exist before the YoutubeDL instance
+            // is created. Doing this here lets extraction failures be reported in the UI.
             try
             {
                 ToolManagerService.EnsureToolsExist();
@@ -58,7 +58,7 @@ namespace AzVideoDownloader
             _videoInfoService = new GetVideoinfo(ytdl);
             _videoDownloadService = new VideoDownloadService(ytdl);
 
-            // Fetch metadata after the user pauses link input.
+            // Debounced so metadata is fetched only after the user stops typing/pasting.
             _linkDebounce = new DebouncedTrigger(LinkDebounceDelay, OnLinkDebounceElapsed);
         }
 

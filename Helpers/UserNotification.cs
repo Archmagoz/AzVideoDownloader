@@ -2,12 +2,18 @@ using System.Windows;
 
 namespace AzVideoDownloader.Helpers
 {
+    /// <summary>
+    /// Modal message boxes shown to the user. Use <see cref="ShowPopup"/> for optional
+    /// feedback (warnings, success) that the user can disable in settings, and
+    /// <see cref="ShowPopupForced"/> for messages that must always be seen (e.g. errors).
+    /// </summary>
     public static class UserNotification
     {
         #region Methods
 
         /// <summary>
         /// Displays an OK message box when user popups are enabled in the application settings.
+        /// Does nothing when they are disabled.
         /// </summary>
         public static void ShowPopup(
             string message,
