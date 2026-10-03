@@ -415,12 +415,35 @@
                                            Grid.Column="0"
                                            Style="{StaticResource InfoLabel}"
                                            Text="Título:"/>
-                                <TextBlock x:Name="VideoTitleText"
-                                           Grid.Row="0"
-                                           Grid.Column="1"
-                                           Style="{StaticResource InfoValue}"
-                                           Text="—"
-                                           TextTrimming="CharacterEllipsis"/>
+                                <!-- Title cell: shows the full title (wrapping as needed) and swaps to an 
+                                     inline editor on click. Editability is controlled in code-behind 
+                                     (see UpdateTitleEditability). -->
+                                <Grid Grid.Row="0"
+                                      Grid.Column="1">
+                                    <TextBlock x:Name="VideoTitleText"
+                                               Style="{StaticResource InfoValue}"
+                                               Text="—"
+                                               TextWrapping="Wrap"
+                                               MouseLeftButtonUp="VideoTitleText_MouseLeftButtonUp"/>
+
+                                    <!-- Inline editor. Takes font family, size, weight and color from 
+                                         the same InfoValue style used by the read-only text, so both modes 
+                                         look identical. Wraps like the read-only text so the cell height 
+                                         follows the content. Commits on Enter or focus loss, cancels on Escape. -->
+                                    <TextBox x:Name="VideoTitleEditor"
+                                             Style="{StaticResource MaterialDesignTextBox}"
+                                             FontFamily="{Binding FontFamily, ElementName=VideoTitleText}"
+                                             FontSize="{Binding FontSize, ElementName=VideoTitleText}"
+                                             FontWeight="{Binding FontWeight, ElementName=VideoTitleText}"
+                                             Foreground="{Binding Foreground, ElementName=VideoTitleText}"
+                                             Padding="0"
+                                             Margin="0,0,0,4"
+                                             TextWrapping="Wrap"
+                                             AcceptsReturn="False"
+                                             Visibility="Collapsed"
+                                             PreviewKeyDown="VideoTitleEditor_PreviewKeyDown"
+                                             LostKeyboardFocus="VideoTitleEditor_LostKeyboardFocus"/>
+                                </Grid>
 
                                 <TextBlock Grid.Row="1"
                                            Grid.Column="0"

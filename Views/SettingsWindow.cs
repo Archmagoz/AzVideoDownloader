@@ -4,11 +4,16 @@ using AzVideoDownloader.Services.Theming;
 
 namespace AzVideoDownloader
 {
+    /// <summary>
+    /// Modal settings dialog (opened from MainWindow). Each change is persisted
+    /// immediately; there is no separate save or cancel step.
+    /// </summary>
     public partial class SettingsWindow : Window
     {
         #region Fields
 
-        // Prevents setting changes from being persisted during initialization.
+        // Prevents setting changes from being persisted during initialization:
+        // assigning IsChecked in LoadSettings raises the same events as a user click.
         private bool _isLoadingSettings;
 
         #endregion
@@ -85,6 +90,8 @@ namespace AzVideoDownloader
 
         /// <summary>
         /// Enables light mode.
+        /// Note that this persists an explicit <see cref="ThemeManager.ThemeMode.Light"/>:
+        /// once the user touches the toggle, the app no longer follows the Windows theme.
         /// </summary>
         private void DarkModeToggle_Unchecked(
             object sender,
@@ -103,6 +110,8 @@ namespace AzVideoDownloader
 
         /// <summary>
         /// Updates and persists the popup visibility setting.
+        /// This is the setting read by <c>UserNotification.ShowPopup</c>; error popups
+        /// shown through <c>ShowPopupForced</c> are not affected by it.
         /// </summary>
         private void PopupsToggle_Changed(
             object sender,

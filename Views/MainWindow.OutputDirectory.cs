@@ -10,11 +10,17 @@ namespace AzVideoDownloader
 {
     /// <summary>
     /// Output folder selection and the history of recently used directories.
+    /// The history is persisted in user settings and mirrored in the OutputDir ComboBox,
+    /// with the most recently used directory always first.
     /// </summary>
     public partial class MainWindow
     {
         // Maximum number of output directories retained in history.
         private const int MaxRecentOutputDirectories = 5;
+
+        // Separator used to serialize the history into a single setting.
+        // Safe because '|' is not a valid character in Windows paths.
+        private const char RecentDirectoriesSeparator = '|';
 
         private void BrowseOutputButton_Click(object sender, RoutedEventArgs e)
         {
@@ -80,6 +86,7 @@ namespace AzVideoDownloader
 
         /// <summary>
         /// Loads persisted directories and removes paths that no longer exist.
+        /// The pruned list is written back so stale entries do not accumulate.
         /// </summary>
         private void LoadRecentOutputDirectories()
         {
@@ -94,6 +101,10 @@ namespace AzVideoDownloader
                 OutputDir.SelectedItem = directories[0];
         }
 
+        /// <summary>
+        /// Reads the persisted history, dropping blanks and case-insensitive duplicates
+        /// and capping it at <see cref="MaxRecentOutputDirectories"/> entries.
+        /// </summary>
         private static List<string> GetRecentOutputDirectories()
         {
             var stored = Properties.Settings.Default.RecentOutputDirectories;
@@ -102,7 +113,7 @@ namespace AzVideoDownloader
                 return [];
 
             return [.. stored
-                .Split('|', StringSplitOptions.RemoveEmptyEntries)
+                .Split(RecentDirectoriesSeparator, StringSplitOptions.RemoveEmptyEntries)
                 .Where(path => !string.IsNullOrWhiteSpace(path))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Take(MaxRecentOutputDirectories)];
@@ -110,7 +121,8 @@ namespace AzVideoDownloader
 
         private static void SaveRecentOutputDirectories(IEnumerable<string> directories)
         {
-            Properties.Settings.Default.RecentOutputDirectories = string.Join("|", directories);
+            Properties.Settings.Default.RecentOutputDirectories =
+                string.Join(RecentDirectoriesSeparator, directories);
             Properties.Settings.Default.Save();
         }
 
@@ -123,7 +135,8 @@ namespace AzVideoDownloader
         }
 
         /// <summary>
-        /// Removes any existing occurrence of a directory and inserts it at the top of the list.
+        /// Removes any existing occurrence of a directory (case-insensitive) and inserts it
+        /// at the top of the list. Mutates and returns the same list instance.
         /// </summary>
         private static List<string> MoveToFront(List<string> directories, string directory)
         {

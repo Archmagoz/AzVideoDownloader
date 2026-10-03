@@ -14,14 +14,14 @@ namespace AzVideoDownloader
     /// <summary>
     /// Download workflow: starting, cancelling, UI state transitions, progress reporting
     /// and the options that shape the output. Shares state and helpers (popups, timestamp
-    /// parsing) with the other MainWindow parts.
+    /// parsing, title editing) with the other MainWindow parts.
     /// </summary>
     public partial class MainWindow
     {
         // Tag value that switches DownloadButton to its red "CANCELAR" state (see MainWindow.xaml).
         private const string DownloadingButtonState = "Downloading";
 
-        // Container extensions available for video and audio-only downloads.
+        // Container extensions offered in the UI for video and audio-only downloads.
         private static readonly string[] VideoContainerExtensions = YtDlpVideoFormats.UiSelectableLabels;
         private static readonly string[] AudioContainerExtensions = YtDlpAudioFormats.UiSelectableLabels;
 
@@ -45,6 +45,11 @@ namespace AzVideoDownloader
             await StartDownloadAsync();
         }
 
+        /// <summary>
+        /// Validates the user input, runs the download and reports the outcome.
+        /// The UI is always restored to its idle state when the download ends,
+        /// whether it succeeds, fails or is cancelled.
+        /// </summary>
         private async Task StartDownloadAsync()
         {
             if (string.IsNullOrWhiteSpace(InputLink.Text))
@@ -91,6 +96,9 @@ namespace AzVideoDownloader
                 startSeconds = start;
                 endSeconds = end;
             }
+
+            // Guarantees a pending inline title edit is applied before the options are read.
+            EndTitleEdit(commit: true);
 
             var options = BuildDownloadOptions(
                 isAudioOnly,
@@ -152,6 +160,8 @@ namespace AzVideoDownloader
             }
             finally
             {
+                // The token source must be cleared before the state update:
+                // title editability is derived from _downloadCts (see IsDownloading).
                 _downloadCts = null;
                 SetDownloadingState(false);
             }
@@ -164,7 +174,7 @@ namespace AzVideoDownloader
         /// </summary>
         private void SetDownloadingState(bool isDownloading)
         {
-            // Switches DownloadButton between "BAIXAR" and the red "CANCELAR" (see MainWindow.xaml).
+            // Drives the DownloadButton style trigger (see DownloadingButtonState).
             DownloadButton.Tag = isDownloading ? DownloadingButtonState : null;
 
             // The button is always clickable: it either starts or cancels a download.
@@ -178,6 +188,11 @@ namespace AzVideoDownloader
             OutputDirPanel.IsEnabled = !isDownloading;
             FormatSelectionCard.IsEnabled = !isDownloading;
             OptionsPanel.IsEnabled = !isDownloading;
+
+            // Closes any open title editor (committing the typed name) and locks or unlocks
+            // the title panel together with the other inputs.
+            EndTitleEdit(commit: true);
+            UpdateTitleEditability();
         }
 
         /// <summary>
@@ -212,7 +227,10 @@ namespace AzVideoDownloader
 
                 DownloadPartial = DownloadPartialCheckBox.IsChecked == true,
                 DownloadStartSeconds = startSeconds,
-                DownloadEndSeconds = endSeconds
+                DownloadEndSeconds = endSeconds,
+
+                // Null keeps the default yt-dlp name; otherwise the user-defined name is used.
+                OutputFileName = _customFileName
             };
 
         /// <summary>

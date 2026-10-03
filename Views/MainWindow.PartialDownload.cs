@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -13,6 +14,13 @@ namespace AzVideoDownloader
     {
         // Number of digits in the fixed HH:mm:ss timestamp representation.
         private const int TimestampDigitCount = 6;
+
+        // Upper bound of the two-digit hours field. The format has no day component,
+        // so the largest representable value is 99:59:59.
+        private const int MaxTimestampHours = 99;
+
+        // Largest representable timestamp (99:59:59).
+        private static readonly TimeSpan MaxTimestamp = new(MaxTimestampHours, 59, 59);
 
         /// <summary>
         /// Synchronizes the digit state with the displayed text when the control receives focus.
@@ -31,6 +39,7 @@ namespace AzVideoDownloader
         /// </summary>
         private void DownloadTimestampTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
+            // Always handled: the text is rendered manually by SetTimestampDigits.
             e.Handled = true;
 
             if (sender is not TextBox textBox)
@@ -43,7 +52,9 @@ namespace AzVideoDownloader
         }
 
         /// <summary>
-        /// Handles deletion by shifting the timestamp digits toward zero.
+        /// Handles Backspace and Delete by shifting the timestamp digits one position toward
+        /// zero (the last digit is dropped and a leading zero is inserted). Both keys behave
+        /// the same, regardless of caret position.
         /// </summary>
         private void DownloadTimestampTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
@@ -56,6 +67,7 @@ namespace AzVideoDownloader
 
         /// <summary>
         /// Replaces the timestamp with the last six digits found in the pasted text.
+        /// Pasted text without any digit leaves the current value unchanged.
         /// </summary>
         private void DownloadTimestampTextBox_Pasting(object sender, DataObjectPastingEventArgs e)
         {
@@ -76,17 +88,30 @@ namespace AzVideoDownloader
         }
 
         /// <summary>
-        /// Updates a timestamp TextBox from a TimeSpan value (hours are capped at 99).
+        /// Updates a timestamp TextBox from a TimeSpan value.
+        /// Values outside [00:00:00, 99:59:59] are clamped as a whole, so the displayed
+        /// timestamp is never a mix of a capped hours field and real minutes/seconds.
         /// </summary>
         private static void SetTimestampTextBoxValue(TextBox textBox, TimeSpan value)
         {
-            var totalHours = Math.Min((int)value.TotalHours, 99);
+            if (value < TimeSpan.Zero)
+                value = TimeSpan.Zero;
+            else if (value > MaxTimestamp)
+                value = MaxTimestamp;
 
-            SetTimestampDigits(textBox, $"{totalHours:00}{value.Minutes:00}{value.Seconds:00}");
+            // Truncate (not round) to whole seconds so the value never exceeds the real duration.
+            var totalSeconds = (int)value.TotalSeconds;
+            var hours = totalSeconds / 3600;
+            var minutes = totalSeconds % 3600 / 60;
+            var seconds = totalSeconds % 60;
+
+            SetTimestampDigits(textBox, $"{hours:00}{minutes:00}{seconds:00}");
         }
 
         /// <summary>
         /// Gets the normalized six-digit representation of a timestamp TextBox.
+        /// Prefers the digits cached in Tag and falls back to parsing the displayed text
+        /// when Tag is missing or malformed (e.g. before the first focus).
         /// </summary>
         private static string GetTimestampDigits(TextBox textBox)
         {
@@ -116,22 +141,43 @@ namespace AzVideoDownloader
         }
 
         /// <summary>
-        /// Parses a user-entered timestamp into seconds.
+        /// Parses a fixed-width "HH:mm:ss" timestamp into total seconds.
+        /// <para>
+        /// <see cref="TimeSpan.TryParse(string, out TimeSpan)"/> is intentionally not used:
+        /// it treats the first component as a time-of-day hour and rejects values of 24 or more,
+        /// which would make ranges for videos longer than 24 hours impossible to parse.
+        /// </para>
         /// </summary>
-        private static bool TryParseTimestamp(string value, out double seconds)
+        /// <returns>
+        /// <c>true</c> if the value is well-formed and minutes and seconds are within 0-59.
+        /// </returns>
+        private static bool TryParseTimestamp(string? value, out double seconds)
         {
             seconds = 0;
 
-            if (!TimeSpan.TryParse(value, out var timestamp) || timestamp < TimeSpan.Zero)
+            var parts = value?.Split(':');
+
+            if (parts is not { Length: 3 })
                 return false;
 
-            seconds = timestamp.TotalSeconds;
+            if (!int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var hours) ||
+                !int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var minutes) ||
+                !int.TryParse(parts[2], NumberStyles.None, CultureInfo.InvariantCulture, out var secs))
+            {
+                return false;
+            }
+
+            if (minutes > 59 || secs > 59)
+                return false;
+
+            seconds = hours * 3600 + minutes * 60 + secs;
             return true;
         }
 
         /// <summary>
         /// Builds the partial download range from the current UI values.
-        /// Returns false when the values are invalid or outside the video duration.
+        /// Returns false when either timestamp is malformed, the end is not after the start,
+        /// or the end exceeds the video duration (when the duration is known).
         /// </summary>
         private bool TryGetDownloadRange(out double startSeconds, out double endSeconds)
         {
