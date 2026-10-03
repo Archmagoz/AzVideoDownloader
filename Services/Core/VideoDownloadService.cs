@@ -1,6 +1,7 @@
 using YoutubeDLSharp;
 using YoutubeDLSharp.Options;
 
+using AzVideoDownloader.Helpers;
 using AzVideoDownloader.Models;
 
 using AzVideoDownloader.Services.Fetch;
@@ -18,6 +19,10 @@ namespace AzVideoDownloader.Services.Core
         private const string DefaultFormatSelector =
             "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]";
 
+        // Used when the user did not rename the file: yt-dlp applies its own
+        // file name sanitization to the video title.
+        private const string DefaultOutputFileTemplate = "%(title)s.%(ext)s";
+
         private readonly YoutubeDL _ytdl = ytdl;
 
         #endregion
@@ -34,7 +39,7 @@ namespace AzVideoDownloader.Services.Core
             CancellationToken cancellationToken = default)
         {
             _ytdl.OutputFolder = outputFolder;
-            _ytdl.OutputFileTemplate = "%(title)s.%(ext)s";
+            _ytdl.OutputFileTemplate = BuildOutputFileTemplate(options);
 
             var overrideOptions = BuildOverrideOptions(options);
 
@@ -63,6 +68,27 @@ namespace AzVideoDownloader.Services.Core
                 ct: cancellationToken,
                 progress: progress,
                 overrideOptions: overrideOptions);
+        }
+
+        #endregion
+
+        #region Output Naming
+
+        /// <summary>
+        /// Builds the yt-dlp output template. A user-defined name is sanitized again here
+        /// (the operation is idempotent) so the service never trusts the UI layer.
+        /// The extension is always left to yt-dlp, so thumbnails, subtitles and
+        /// post-processed files keep a consistent base name.
+        /// </summary>
+        private static string BuildOutputFileTemplate(YtDlpOptions options)
+        {
+            var fileName = FileNameSanitizer.Sanitize(options.OutputFileName);
+
+            if (fileName.Length == 0)
+                return DefaultOutputFileTemplate;
+
+            // "%" starts a yt-dlp template field, so literal percent signs must be escaped.
+            return $"{fileName.Replace("%", "%%")}.%(ext)s";
         }
 
         #endregion
@@ -174,7 +200,6 @@ namespace AzVideoDownloader.Services.Core
 
             ConfigureSubtitleOptions(overrideOptions, options);
             ConfigureRemuxOptions(overrideOptions, options);
-
         }
 
         /// <summary>
@@ -182,12 +207,12 @@ namespace AzVideoDownloader.Services.Core
         /// of the source media.
         /// </summary>
         private static void ConfigureDownloadRangeOptions(
-        OptionSet overrideOptions,
-        YtDlpOptions options)
+            OptionSet overrideOptions,
+            YtDlpOptions options)
         {
             if (!options.DownloadPartial ||
-            !options.DownloadStartSeconds.HasValue ||
-            !options.DownloadEndSeconds.HasValue)
+                !options.DownloadStartSeconds.HasValue ||
+                !options.DownloadEndSeconds.HasValue)
             {
                 return;
             }
@@ -198,7 +223,6 @@ namespace AzVideoDownloader.Services.Core
             overrideOptions.AddCustomOption<string>(
                 "--download-sections",
                 $"*{start}-{end}");
-
         }
 
         /// <summary>
@@ -211,7 +235,6 @@ namespace AzVideoDownloader.Services.Core
             return duration.TotalHours >= 1
                 ? duration.ToString(@"hh\:mm\:ss")
                 : duration.ToString(@"mm\:ss");
-
         }
 
         /// <summary>

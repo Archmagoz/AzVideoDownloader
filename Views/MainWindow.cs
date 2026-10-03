@@ -33,6 +33,7 @@ namespace AzVideoDownloader
 
             ApplySavedTheme();
             LoadRecentOutputDirectories();
+            InitializeTitleTracking();
 
             // Initialize bundled tools before creating the YoutubeDL instance.
             // Keeping this here allows tool extraction failures to be reported to the UI.

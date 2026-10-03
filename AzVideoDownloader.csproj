@@ -81,6 +81,9 @@
     <Compile Update="Views\MainWindow.LinkInput.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Update="Views\MainWindow.VideoTitle.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Update="Views\SettingsWindow.cs">
       <DependentUpon>SettingsWindow.xaml</DependentUpon>
     </Compile>

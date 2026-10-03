@@ -14,7 +14,7 @@ namespace AzVideoDownloader
     /// <summary>
     /// Download workflow: starting, cancelling, UI state transitions, progress reporting
     /// and the options that shape the output. Shares state and helpers (popups, timestamp
-    /// parsing) with the other MainWindow parts.
+    /// parsing, title editing) with the other MainWindow parts.
     /// </summary>
     public partial class MainWindow
     {
@@ -92,6 +92,9 @@ namespace AzVideoDownloader
                 endSeconds = end;
             }
 
+            // Guarantees a pending inline title edit is applied before the options are read.
+            EndTitleEdit(commit: true);
+
             var options = BuildDownloadOptions(
                 isAudioOnly,
                 selectedVideo,
@@ -152,6 +155,8 @@ namespace AzVideoDownloader
             }
             finally
             {
+                // The token source must be cleared before the state update:
+                // title editability is derived from _downloadCts (see IsDownloading).
                 _downloadCts = null;
                 SetDownloadingState(false);
             }
@@ -178,6 +183,11 @@ namespace AzVideoDownloader
             OutputDirPanel.IsEnabled = !isDownloading;
             FormatSelectionCard.IsEnabled = !isDownloading;
             OptionsPanel.IsEnabled = !isDownloading;
+
+            // Closes any open title editor (committing the typed name) and locks or unlocks
+            // the title panel together with the other inputs.
+            EndTitleEdit(commit: true);
+            UpdateTitleEditability();
         }
 
         /// <summary>
@@ -212,7 +222,10 @@ namespace AzVideoDownloader
 
                 DownloadPartial = DownloadPartialCheckBox.IsChecked == true,
                 DownloadStartSeconds = startSeconds,
-                DownloadEndSeconds = endSeconds
+                DownloadEndSeconds = endSeconds,
+
+                // Null keeps the default yt-dlp name; otherwise the sanitized user-defined name is used.
+                OutputFileName = _customFileName
             };
 
         /// <summary>

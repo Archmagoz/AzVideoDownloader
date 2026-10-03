@@ -16,6 +16,19 @@ namespace AzVideoDownloader.Models
 
         #endregion
 
+        #region Output Naming
+
+        /// <summary>
+        /// Gets or sets the base output file name, without extension.
+        /// A null or empty value keeps the default yt-dlp name, derived from
+        /// the title reported by the video source. The value is expected to be
+        /// sanitized for Windows, but consumers must not rely on that and should
+        /// sanitize it again before use.
+        /// </summary>
+        public string? OutputFileName { get; set; }
+
+        #endregion
+
         #region Download Range
 
         /// <summary>
@@ -157,7 +170,7 @@ namespace AzVideoDownloader.Models
         private static readonly HashSet<string> ThumbnailIncompatible =
             new(StringComparer.OrdinalIgnoreCase)
             {
-            "wav"
+                "wav"
             };
 
         #endregion
