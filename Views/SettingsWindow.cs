@@ -10,26 +10,15 @@ namespace AzVideoDownloader
     /// </summary>
     public partial class SettingsWindow : Window
     {
-        #region Fields
-
         // Prevents setting changes from being persisted during initialization:
         // assigning IsChecked in LoadSettings raises the same events as a user click.
         private bool _isLoadingSettings;
 
-        #endregion
-
-        #region Constructor
-
         public SettingsWindow()
         {
             InitializeComponent();
-
             LoadSettings();
         }
-
-        #endregion
-
-        #region Settings
 
         /// <summary>
         /// Loads persisted settings into the UI.
@@ -70,10 +59,6 @@ namespace AzVideoDownloader
                 ThemeManager.ThemeMode.Dark;
         }
 
-        #endregion
-
-        #region Theme
-
         /// <summary>
         /// Enables dark mode.
         /// </summary>
@@ -104,10 +89,6 @@ namespace AzVideoDownloader
                 ThemeManager.ThemeMode.Light);
         }
 
-        #endregion
-
-        #region Notifications
-
         /// <summary>
         /// Updates and persists the popup visibility setting.
         /// This is the setting read by <c>UserNotification.ShowPopup</c>; error popups
@@ -126,10 +107,6 @@ namespace AzVideoDownloader
             Properties.Settings.Default.Save();
         }
 
-        #endregion
-
-        #region Window Actions
-
         /// <summary>
         /// Closes the settings window.
         /// </summary>
@@ -139,7 +116,5 @@ namespace AzVideoDownloader
         {
             Close();
         }
-
-        #endregion
     }
 }

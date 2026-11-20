@@ -12,8 +12,6 @@ namespace AzVideoDownloader.Services.Theming
     /// </summary>
     public static class ThemeManager
     {
-        #region Theme Mode
-
         public enum ThemeMode
         {
             System,
@@ -54,10 +52,6 @@ namespace AzVideoDownloader.Services.Theming
                     : ThemeMode.Light
                 : SavedThemeMode;
 
-        #endregion
-
-        #region Public API
-
         /// <summary>
         /// Applies the theme mode currently persisted in application settings.
         /// </summary>
@@ -92,10 +86,6 @@ namespace AzVideoDownloader.Services.Theming
             return key?.GetValue("AppsUseLightTheme") is int value && value == 0;
         }
 
-        #endregion
-
-        #region Private Helpers
-
         /// <summary>
         /// Applies the specified theme mode to the Material Design palette.
         /// System mode is resolved against the current Windows application theme.
@@ -114,7 +104,5 @@ namespace AzVideoDownloader.Services.Theming
 
             paletteHelper.SetTheme(theme);
         }
-
-        #endregion
     }
 }

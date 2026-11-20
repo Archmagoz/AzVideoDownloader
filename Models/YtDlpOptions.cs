@@ -7,17 +7,12 @@ namespace AzVideoDownloader.Models
     /// </summary>
     public sealed class YtDlpOptions
     {
-        #region Mode
 
         /// <summary>
         /// Determines whether only audio is extracted instead of downloading
         /// a video stream.
         /// </summary>
         public bool AudioOnly { get; set; }
-
-        #endregion
-
-        #region Output Naming
 
         /// <summary>
         /// Gets or sets the base output file name, without extension.
@@ -27,10 +22,6 @@ namespace AzVideoDownloader.Models
         /// sanitize it again before use.
         /// </summary>
         public string? OutputFileName { get; set; }
-
-        #endregion
-
-        #region Download Range
 
         /// <summary>
         /// Determines whether only a specific time range of the source video
@@ -54,10 +45,6 @@ namespace AzVideoDownloader.Models
         /// </summary>
         public double? DownloadEndSeconds { get; set; }
 
-        #endregion
-
-        #region Audio-Only Options
-
         /// <summary>
         /// Gets or sets the output audio extension selected by the user.
         /// Only used when <see cref="AudioOnly"/> is enabled. The value is converted
@@ -73,10 +60,6 @@ namespace AzVideoDownloader.Models
         /// audio quality selection to yt-dlp.
         /// </summary>
         public string? AudioQuality { get; set; }
-
-        #endregion
-
-        #region Video Options
 
         /// <summary>
         /// Gets or sets the selected video format ID.
@@ -122,10 +105,6 @@ namespace AzVideoDownloader.Models
         public string EffectiveContainer =>
             ChangeExtension ? TargetContainer : SourceContainer;
 
-        #endregion
-
-        #region Postprocessing Options
-
         /// <summary>
         /// Determines whether the thumbnail should be embedded into the
         /// output file when supported by the selected format.
@@ -148,8 +127,6 @@ namespace AzVideoDownloader.Models
         /// A null or empty value means no specific language filter was requested.
         /// </summary>
         public string? SubtitleLangs { get; set; }
-
-        #endregion
     }
 
     /// <summary>
@@ -158,16 +135,11 @@ namespace AzVideoDownloader.Models
     /// </summary>
     public static class YtDlpAudioFormats
     {
-        #region Constants
 
         // The UI shows the familiar "ogg" name, but yt-dlp's --audio-format
         // expects the codec name "vorbis" for that format.
         private const string OggUiLabel = "ogg";
         private const string OggYtDlpFormat = "vorbis";
-
-        #endregion
-
-        #region Lookup Data
 
         /// <summary>
         /// Gets the audio format labels available in the audio-only UI.
@@ -181,10 +153,6 @@ namespace AzVideoDownloader.Models
             {
                 "wav"
             };
-
-        #endregion
-
-        #region Public API
 
         /// <summary>
         /// Converts a UI audio format label to the value expected by
@@ -209,8 +177,6 @@ namespace AzVideoDownloader.Models
         /// </summary>
         public static bool SupportsEmbeddedThumbnail(string uiLabel) =>
             !ThumbnailIncompatible.Contains(uiLabel);
-
-        #endregion
     }
 
     /// <summary>
@@ -219,17 +185,11 @@ namespace AzVideoDownloader.Models
     /// </summary>
     public static class YtDlpVideoFormats
     {
-        #region Lookup Data
-
         /// <summary>
         /// Gets the video container labels available in the video UI.
         /// </summary>
         public static readonly string[] UiSelectableLabels =
             ["mp4", "mkv", "mov", "webm"];
-
-        #endregion
-
-        #region Public API
 
         /// <summary>
         /// Determines whether the specified container extension is supported
@@ -240,7 +200,5 @@ namespace AzVideoDownloader.Models
                 && UiSelectableLabels.Contains(
                     containerExtension,
                     StringComparer.OrdinalIgnoreCase);
-
-        #endregion
     }
 }

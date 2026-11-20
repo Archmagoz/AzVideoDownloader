@@ -14,8 +14,6 @@ namespace AzVideoDownloader.Services.Fetch
         // one per request can exhaust sockets.
         private static readonly HttpClient _httpClient = new();
 
-        #region Public API
-
         /// <summary>
         /// Downloads and decodes the thumbnail at the specified URL.
         /// Returns <see langword="null"/> when the URL is empty or the
@@ -55,7 +53,5 @@ namespace AzVideoDownloader.Services.Fetch
                 return null;
             }
         }
-
-        #endregion
     }
 }

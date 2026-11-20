@@ -28,8 +28,6 @@ namespace AzVideoDownloader
         // Cancels the running download. Null when no download is in progress.
         private CancellationTokenSource? _downloadCts;
 
-        #region Download Action
-
         /// <summary>
         /// Starts a download, or cancels the running one when the button is in its "cancel" state.
         /// </summary>
@@ -266,10 +264,6 @@ namespace AzVideoDownloader
             }
         }
 
-        #endregion
-
-        #region Download Options
-
         /// <summary>
         /// Audio-only mode disables video-specific options and switches to audio containers.
         /// </summary>
@@ -321,7 +315,5 @@ namespace AzVideoDownloader
                 items.FirstOrDefault(item => ((string)item.Content).EqualsIgnoreCase(preferredDefault))
                 ?? items.FirstOrDefault();
         }
-
-        #endregion
     }
 }

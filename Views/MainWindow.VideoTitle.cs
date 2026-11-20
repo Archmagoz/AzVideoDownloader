@@ -38,8 +38,6 @@ namespace AzVideoDownloader
         // The title is editable only when a video is loaded and no download is running.
         private bool CanEditTitle => !IsDownloading && _fetchedTitle is not null;
 
-        #region Initialization
-
         /// <summary>
         /// Starts observing VideoTitleText.Text. Any change not made by this class is treated
         /// as a newly loaded title, so the fetch code does not need to know about the edit
@@ -78,10 +76,6 @@ namespace AzVideoDownloader
             UpdateTitleEditability();
         }
 
-        #endregion
-
-        #region Title State
-
         /// <summary>
         /// Sets the title reported by yt-dlp and discards any previous user edit.
         /// Pass null to reset the preview when no video is loaded.
@@ -111,10 +105,6 @@ namespace AzVideoDownloader
             VideoTitleText.Cursor = canEdit ? Cursors.Hand : null;
             VideoTitleText.ToolTip = canEdit ? TitleEditToolTip : null;
         }
-
-        #endregion
-
-        #region Edit Workflow
 
         private void VideoTitleText_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
@@ -225,7 +215,5 @@ namespace AzVideoDownloader
                 _isRefreshingTitle = false;
             }
         }
-
-        #endregion
     }
 }

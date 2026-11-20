@@ -15,8 +15,6 @@ namespace AzVideoDownloader.Services.Core
     /// </summary>
     public class VideoDownloadService(YoutubeDL ytdl)
     {
-        #region Fields
-
         // Fallback used when no video format is selected: best MP4 video plus M4A audio,
         // or a single pre-merged MP4 stream when separate streams are not available.
         private const string DefaultFormatSelector =
@@ -28,10 +26,6 @@ namespace AzVideoDownloader.Services.Core
 
         private readonly YoutubeDL _ytdl = ytdl;
 
-        #endregion
-
-        #region Public API
-
         /// <summary>
         /// Runs a video or audio-only download, depending on <see cref="YtDlpOptions.AudioOnly"/>.
         /// In audio-only mode the <paramref name="video"/> and <paramref name="audio"/>
@@ -39,6 +33,8 @@ namespace AzVideoDownloader.Services.Core
         /// <see cref="YtDlpOptions.AudioFormat"/>.
         /// </summary>
         /// <remarks>
+        /// Waits for the background yt-dlp self-update to finish before starting, since the
+        /// updater replaces yt-dlp.exe on disk.
         /// Cancelling <paramref name="cancellationToken"/> terminates the yt-dlp process.
         /// This may surface as an <see cref="OperationCanceledException"/> or as an unsuccessful
         /// result, so callers should handle both.
@@ -53,6 +49,11 @@ namespace AzVideoDownloader.Services.Core
             IProgress<DownloadProgress>? progress = null,
             CancellationToken cancellationToken = default)
         {
+            // No yt-dlp process may be spawned while the self-update is swapping the
+            // executable. The update task never faults; the token only lets the caller
+            // abandon the wait.
+            await ToolManagerService.YtDlpUpdateTask.WaitAsync(cancellationToken);
+
             // Both settings persist on the shared instance, so they are reapplied on every run.
             _ytdl.OutputFolder = outputFolder;
             _ytdl.OutputFileTemplate = BuildOutputFileTemplate(options);
@@ -87,10 +88,6 @@ namespace AzVideoDownloader.Services.Core
                 overrideOptions: overrideOptions);
         }
 
-        #endregion
-
-        #region Output Naming
-
         /// <summary>
         /// Builds the yt-dlp output template. A user-defined name is sanitized again here
         /// (the operation is idempotent) so the service never trusts the UI layer.
@@ -107,10 +104,6 @@ namespace AzVideoDownloader.Services.Core
             // "%" starts a yt-dlp template field, so literal percent signs must be escaped.
             return $"{fileName.Replace("%", "%%")}.%(ext)s";
         }
-
-        #endregion
-
-        #region Format Resolution
 
         /// <summary>
         /// Resolves the video format selector from the selected video and
@@ -184,10 +177,6 @@ namespace AzVideoDownloader.Services.Core
                 ? parsed
                 : default;
         }
-
-        #endregion
-
-        #region Option Building
 
         /// <summary>
         /// Builds the yt-dlp options for the current download.
@@ -307,7 +296,5 @@ namespace AzVideoDownloader.Services.Core
 
             overrideOptions.RemuxVideo = options.TargetContainer;
         }
-
-        #endregion
     }
 }

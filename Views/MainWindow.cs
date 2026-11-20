@@ -41,7 +41,9 @@ namespace AzVideoDownloader
             {
                 ToolManagerService.EnsureToolsExist();
             }
-            catch (FileNotFoundException ex)
+            // Covers disk-full and access-denied failures in addition to missing
+            // embedded resources (FileNotFoundException derives from IOException).
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 ShowPopupForced(ex.Message, MessageBoxImage.Error);
                 Application.Current.Shutdown();
@@ -57,6 +59,11 @@ namespace AzVideoDownloader
 
             _videoInfoService = new GetVideoinfo(ytdl);
             _videoDownloadService = new VideoDownloadService(ytdl);
+
+            // Fire-and-forget so the update does not delay window startup. Any code
+            // that spawns yt-dlp must await ToolManagerService.YtDlpUpdateTask first,
+            // because the updater replaces yt-dlp.exe on disk.
+            _ = ToolManagerService.StartYtDlpUpdate();
 
             // Debounced so metadata is fetched only after the user stops typing/pasting.
             _linkDebounce = new DebouncedTrigger(LinkDebounceDelay, OnLinkDebounceElapsed);

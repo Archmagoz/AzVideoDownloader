@@ -19,8 +19,6 @@ namespace AzVideoDownloader
         // Null when unknown or when no video is loaded.
         private double? _currentVideoDurationSeconds;
 
-        #region Video Info Fetch
-
         /// <summary>
         /// Fetches video metadata and thumbnail, then updates the UI.
         /// Only the most recent request is allowed to update the UI: every await is
@@ -200,10 +198,6 @@ namespace AzVideoDownloader
             DownloadButton.IsEnabled = true;
         }
 
-        #endregion
-
-        #region Video Format Selection
-
         /// <summary>
         /// Updates the format details panel when the selected video format changes.
         /// </summary>
@@ -244,7 +238,5 @@ namespace AzVideoDownloader
                     ? $"{sizeBytes.Value * 8 / _currentVideoDurationSeconds.Value / 1000:0} kbps (aprox.)"
                     : "—";
         }
-
-        #endregion
     }
 }

@@ -10,14 +10,8 @@ namespace AzVideoDownloader.Helpers
     /// </summary>
     public sealed class DebouncedTrigger
     {
-        #region Fields
-
         private readonly DispatcherTimer _timer;
         private readonly Action _callback;
-
-        #endregion
-
-        #region Constructor
 
         /// <param name="delay">Quiet period required after the last <see cref="Arm"/> call.</param>
         /// <param name="callback">Action to invoke when the countdown elapses or on <see cref="TriggerNow"/>.</param>
@@ -32,10 +26,6 @@ namespace AzVideoDownloader.Helpers
                 _callback();
             };
         }
-
-        #endregion
-
-        #region Public API
 
         /// <summary>
         /// Starts or restarts the debounce countdown.
@@ -60,7 +50,5 @@ namespace AzVideoDownloader.Helpers
         /// Cancels the debounce countdown without invoking the callback.
         /// </summary>
         public void Cancel() => _timer.Stop();
-
-        #endregion
     }
 }

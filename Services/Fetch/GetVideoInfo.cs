@@ -13,8 +13,6 @@ namespace AzVideoDownloader.Services.Fetch
     {
         private readonly YoutubeDL _ytdl = ytdl;
 
-        #region Public API
-
         /// <summary>
         /// Fetches metadata for the specified URL.
         /// Returns <see langword="null"/> when yt-dlp fails to resolve the URL.
@@ -26,6 +24,11 @@ namespace AzVideoDownloader.Services.Fetch
             string url,
             CancellationToken ct)
         {
+            // The background self-update replaces yt-dlp.exe on disk, so no yt-dlp
+            // process may be spawned until it has finished. The update task never
+            // faults; the token only lets the caller abandon the wait.
+            await ToolManagerService.YtDlpUpdateTask.WaitAsync(ct);
+
             var result = await _ytdl.RunVideoDataFetch(
                 url,
                 ct: ct,
@@ -46,10 +49,6 @@ namespace AzVideoDownloader.Services.Fetch
                 AudioFormats = BuildAudioFormats(info.Formats)
             };
         }
-
-        #endregion
-
-        #region Format Mapping
 
         // yt-dlp reports "none" for a missing codec and the value is null when the codec
         // is unknown. Both cases are treated as "no stream of that kind" in the filters below.
@@ -81,7 +80,5 @@ namespace AzVideoDownloader.Services.Fetch
                 .OrderByDescending(f => f.AudioBitrate ?? 0)
                 .Select(GetAVFormatList.ForAudio)];
         }
-
-        #endregion
     }
 }

@@ -10,8 +10,6 @@ namespace AzVideoDownloader.Services.Fetch
     /// </summary>
     public sealed class GetAVFormatList(FormatData source, string display)
     {
-        #region Fields
-
         /// <summary>
         /// Gets the original yt-dlp format data.
         /// </summary>
@@ -26,10 +24,6 @@ namespace AzVideoDownloader.Services.Fetch
         /// Gets the format identifier used by yt-dlp.
         /// </summary>
         public string FormatId => Source.FormatId;
-
-        #endregion
-
-        #region Factory Methods
 
         /// <summary>
         /// Creates a display model for a video format.
@@ -66,10 +60,6 @@ namespace AzVideoDownloader.Services.Fetch
                 $"{format.Format} · {extension} · {size}");
         }
 
-        #endregion
-
-        #region Private Helpers
-
         /// <summary>
         /// Formats a byte count as a human-readable megabyte value (1 MB = 1024 * 1024 bytes).
         /// Returns a placeholder when the size is unknown or zero. The exact file size is
@@ -84,7 +74,5 @@ namespace AzVideoDownloader.Services.Fetch
 
             return $"{megabytes:0.#} MB";
         }
-
-        #endregion
     }
 }

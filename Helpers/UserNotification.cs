@@ -9,8 +9,6 @@ namespace AzVideoDownloader.Helpers
     /// </summary>
     public static class UserNotification
     {
-        #region Methods
-
         /// <summary>
         /// Displays an OK message box when user popups are enabled in the application settings.
         /// Does nothing when they are disabled.
@@ -36,7 +34,5 @@ namespace AzVideoDownloader.Helpers
         {
             MessageBox.Show(message, title, MessageBoxButton.OK, image);
         }
-
-        #endregion
     }
 }
